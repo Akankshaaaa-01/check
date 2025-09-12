@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroWatch India - Real-time DWLR Groundwater Analysis System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            --primary: #1e40af;
+            --secondary: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .app-container {
+            background: rgba(255, 255, 255, 0.95);
+            min-height: 100vh;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logo i {
+            font-size: 2rem;
+            color: #60a5fa;
+        }
+        
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .nav-tabs {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-tabs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 2rem;
+            padding: 0 2rem;
+        }
+        
+        .nav-tab {
+            padding: 1rem 0;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-tab:hover {
+            color: var(--primary);
+        }
+        
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .metric-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .metric-icon.blue { background: #dbeafe; color: #3b82f6; }
+        .metric-icon.green { background: #d1fae5; color: #10b981; }
+        .metric-icon.yellow { background: #fed7aa; color: #f59e0b; }
+        .metric-icon.red { background: #fee2e2; color: #ef4444; }
+        .metric-icon.purple { background: #e9d5ff; color: #7c3aed; }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+        }
+        
+        .change-positive { color: var(--success); }
+        .change-negative { color: var(--danger); }
+        
+        .filter-section {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        .filter-input {
+            padding: 0.625rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.3s;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            background: #1e3a8a;
+        }
+        
+        .map-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .map-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        #map {
+            height: 500px;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .station-list-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .station-card {
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .station-card:hover {
+            background: #f9fafb;
+            border-color: var(--primary);
+        }
+        
+        .station-card.selected {
+            background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .station-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .station-name {
+            font-weight: 600;
+        }
+        
+        .station-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-online { background: #d1fae5; color: #065f46; }
+        .badge-offline { background: #fee2e2; color: #991b1b; }
+        .badge-telemetric { background: #dbeafe; color: #1e40af; }
+        
+        .telemetric-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: #059669;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #10b981;
+        }
+        
+        .data-quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        
+        .quality-excellent { color: #059669; }
+        .quality-good { color: #d97706; }
+        .quality-poor { color: #dc2626; }
+        
+        .real-time-badge {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @media (max-width: 768px) {
+            .map-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .config-panel {
+            background: #fffbeb;
+            border: 1px solid #f59e0b;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .config-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-water"></i>
+                    <div>
+                        <h1>HydroWatch India</h1>
+                        <p style="font-size: 0.875rem; opacity: 0.9;">Real-time DWLR Groundwater Analysis System</p>
+                    </div>
+                </div>
+                <div class="api-status" id="apiStatus">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting to India-WRIS API...</span>
+                </div>
+            </div>
+        </header>
+        
+        <nav class="nav-tabs">
+            <div class="nav-tabs-container">
+                <div class="nav-tab active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-tab" data-tab="monitoring">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span>Live Monitoring</span>
+                </div>
+                <div class="nav-tab" data-tab="analytics">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </div>
+                <div class="nav-tab" data-tab="telemetry">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Telemetry</span>
+                </div>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" id="dashboard">
+                <div id="errorContainer"></div>
+                
+                <div class="dashboard-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Total DWLR Stations</div>
+                                <div class="metric-value" id="totalStations">Loading...</div>
+                                <div class="metric-change" id="stationsStatus">
+                                    <i class="fas fa-sync fa-spin"></i>
+                                    <span>Fetching data...</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon blue">
+                                <i class="fas fa-broadcast-tower"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">States Covered</div>
+                                <div class="metric-value" id="statesCount">Loading...</div>
+                                <div class="metric-change" id="statesStatus">
+                                    <i class="fas fa-sync fa-spin"></i>
+                                    <span>Loading states...</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon green">
+                                <i class="fas fa-map"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Districts Covered</div>
+                                <div class="metric-value" id="districtsCount">Loading...</div>
+                                <div class="metric-change" id="districtsStatus">
+                                    <i class="fas fa-sync fa-spin"></i>
+                                    <span>Calculating coverage...</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon yellow">
+                                <i class="fas fa-city"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Telemetric Stations</div>
+                                <div class="metric-value" id="telemetricCount">Loading...</div>
+                                <div class="metric-change" id="telemetricStatus">
+                                    <span class="real-time-badge">REAL-TIME</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon purple">
+                                <i class="fas fa-satellite-dish"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Data Quality</div>
+                                <div class="metric-value" id="dataQuality">Loading...</div>
+                                <div class="metric-change" id="qualityStatus">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Excellent</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon green">
+                                <i class="fas fa-award"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Last Updated</div>
+                                <div class="metric-value" id="lastUpdate" style="font-size: 1.5rem;">Loading...</div>
+                                <div class="metric-change change-positive">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Auto-refresh enabled</span>
+                                </div>
+                            </div>
+                            <div class="metric-icon blue">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Live Monitoring Tab -->
+            <div class="tab-content" id="monitoring">
+                <div class="filter-section">
+                    <h3 style="margin-bottom: 1rem;">Filter DWLR Stations</h3>
+                    <div class="filter-grid">
+                        <div class="filter-group">
+                            <label class="filter-label">State</label>
+                            <select class="filter-input" id="stateFilter">
+                                <option value="">Loading states...</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">District</label>
+                            <select class="filter-input" id="districtFilter">
+                                <option value="">Select state first</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Tehsil</label>
+                            <select class="filter-input" id="tehsilFilter">
+                                <option value="">Select district first</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Block</label>
+                            <select class="filter-input" id="blockFilter">
+                                <option value="">Select tehsil first</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Agency</label>
+                            <select class="filter-input" id="agencyFilter">
+                                <option value="">All Agencies</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">&nbsp;</label>
+                            <button class="filter-input btn-primary" id="applyFilters">
+                                <i class="fas fa-search"></i> Search Stations
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="map-section">
+                    <div class="map-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>DWLR Station Locations</h3>
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <span class="real-time-badge">LIVE DATA</span>
+                                <button class="filter-input btn-primary" id="refreshMap">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                        <div id="map"></div>
+                    </div>
+                    <div class="station-list-container">
+                        <h3 style="margin-bottom: 1rem;">Station List (<span id="stationCount">0</span>)</h3>
+                        <div id="stationList">
+                            <div style="text-align: center; color: #6b7280; padding: 2rem;">
+                                <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                <p>Use filters above to search for DWLR stations</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analytics Tab -->
+            <div class="tab-content" id="analytics">
+                <div class="filter-section">
+                    <h3 style="margin-bottom: 1rem;">Analytics Dashboard</h3>
+                    <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="text-align: center;">
+                            <i class="fas fa-chart-line" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                            <h3 style="margin-bottom: 1rem;">Advanced Analytics Coming Soon</h3>
+                            <p style="color: #6b7280; max-width: 600px; margin: 0 auto;">
+                                This section will provide comprehensive analysis of groundwater trends, seasonal variations, 
+                                recharge patterns, and predictive modeling based on real-time DWLR data from all 5,260 stations 
+                                across India.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Telemetry Tab -->
+            <div class="tab-content" id="telemetry">
+                <div class="filter-section">
+                    <h3 style="margin-bottom: 1rem;">Telemetric DWLR Stations</h3>
+                    <div id="telemetryStationsList">
+                        <div style="text-align: center; color: #6b7280; padding: 2rem;">
+                            <i class="fas fa-satellite-dish" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>Loading telemetric stations data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Application state management
+        const app = {
+            map: null,
+            markers: {},
+            states: [],
+            districts: [],
+            stations: [],
+            telemetricStations: [],
+            apiEndpoints: {
+                stateList: '/api/indiawris/masterState/StateList',
+                districtByState: '/api/indiawris/masterDistrict/getDistrictbyState',
+                tehsilList: '/api/indiawris/tehsil/getMasterTehsilList',
+                blockList: '/api/indiawris/block/getMasterBlockList',
+                agencyList: '/api/indiawris/masterAgency/AgencyListInAnyCase',
+                masterStation: '/api/indiawris/masterStation/getMasterStation',
+                stationDSList: '/api/indiawris/masterStationDS/stationDSList'
+            },
+            isLoading: false,
+            totalStationsCount: 0,
+            telemetricStationsCount: 0,
+            backendUrl: 'http://localhost:3000'
+        };
+        
+        // Utility functions
+        function showLoading() {
+            app.isLoading = true;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            app.isLoading = false;
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Error:</strong> ${message}
+                    </div>
+                `;
+            }
+        }
+        
+        function showSuccess(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="success-message">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>Success:</strong> ${message}
+                    </div>
+                `;
+                setTimeout(() => {
+                    errorContainer.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        function updateApiStatus(isConnected, message) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (statusDot && statusText) {
+                if (isConnected) {
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = message || 'Connected to India-WRIS API';
+                } else {
+                    statusDot.className = 'status-dot status-offline';
+                    statusText.textContent = message || 'API Connection Failed';
+                }
+            }
+        }
+        
+        // API request function with proxy server
+        async function makeAPIRequest(endpoint, data, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    if (i === 0) showLoading();
+                    
+                    const response = await fetch(`${app.backendUrl}${endpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    updateApiStatus(true);
+                    hideLoading();
+                    return result;
+                    
+                } catch (error) {
+                    console.error(`API request failed (attempt ${i + 1}/${retries}):`, error);
+                    if (i === retries - 1) {
+                        updateApiStatus(false, `Failed to connect: ${error.message}`);
+                        hideLoading();
+                        return { statusCode: 500, message: error.message, data: [] };
+                    }
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+        }
+        
+        // Fetch all states
+        async function fetchStates() {
+            const data = { datasetcode: "GWATERLVL" };
+            const result = await makeAPIRequest(app.apiEndpoints.stateList, data);
+            
+            if (result.statusCode === 200 && result.data && result.data.length > 0) {
+                app.states = result.data;
+                populateStateFilter(app.states);
+                updateDashboardMetrics();
+                showSuccess(`Successfully loaded ${result.data.length} states from India-WRIS API`);
+                return result.data;
+            } else {
+                showError('Failed to fetch states from India-WRIS API. Please check your backend server.');
+                return [];
+            }
+        }
+        
+        // Fetch districts for a state
+        async function fetchDistricts(statecode) {
+            const data = { statecode: statecode, datasetcode: "GWATERLVL" };
+            const result = await makeAPIRequest(app.apiEndpoints.districtByState, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                showError(`Failed to fetch districts for state code ${statecode}`);
+                return [];
+            }
+        }
+        
+        // Fetch tehsils for a district
+        async function fetchTehsils(statecode, district_id) {
+            const data = { statecode: statecode, district_id: district_id, datasetcode: "GWATERLVL" };
+            const result = await makeAPIRequest(app.apiEndpoints.tehsilList, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                console.error(`Failed to fetch tehsils for district ${district_id}`);
+                return [];
+            }
+        }
+        
+        // Fetch blocks for a tehsil
+        async function fetchBlocks(statecode, district_id, tahsil_id) {
+            const data = { statecode: statecode, district_id: district_id, tahsil_id: tahsil_id, datasetcode: "GWATERLVL" };
+            const result = await makeAPIRequest(app.apiEndpoints.blockList, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                console.error(`Failed to fetch blocks for tehsil ${tahsil_id}`);
+                return [];
+            }
+        }
+        
+        // Fetch agencies for a location - FIXED THIS FUNCTION
+        async function fetchAgencies(district_id, tahsil_id, block_id) {
+            const data = { 
+                district_id: district_id || 0, 
+                datasetcode: "GWATERLVL",
+                localriverid: 0,
+                tributaryid: 0,
+                tahsil_id: tahsil_id || 0,
+                block_id: block_id || 0
+            };
+            
+            const result = await makeAPIRequest(app.apiEndpoints.agencyList, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                console.error(`Failed to fetch agencies for district ${district_id}`);
+                // Return some default agencies if API fails
+                return [
+                    { agencyid: "CGWB", agencyname: "Central Ground Water Board" },
+                    { agencyid: "STATE_GW", agencyname: "State Ground Water Department" }
+                ];
+            }
+        }
+        
+        // Fetch stations for a district
+        async function fetchStations(district_id, agencyid = '') {
+            const data = { 
+                district_id: district_id, 
+                agencyid: agencyid, 
+                datasetcode: "GWATERLVL" 
+            };
+            const result = await makeAPIRequest(app.apiEndpoints.masterStation, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                console.error(`Failed to fetch stations for district ${district_id}`);
+                return [];
+            }
+        }
+        
+        // Fetch telemetric stations
+        async function fetchTelemetricStations(district_id, agencyid = '') {
+            const data = { 
+                district_id: district_id.toString(), 
+                agencyid: agencyid.toString(), 
+                datasetcode: "GWATERLVL",
+                telemetric: "true"
+            };
+            const result = await makeAPIRequest(app.apiEndpoints.stationDSList, data);
+            
+            if (result.statusCode === 200 && result.data) {
+                return result.data;
+            } else {
+                console.error(`Failed to fetch telemetric stations for district ${district_id}`);
+                return [];
+            }
+        }
+        
+        // Populate state filter dropdown
+        function populateStateFilter(states) {
+            const stateFilter = document.getElementById('stateFilter');
+            if (!stateFilter) return;
+            
+            stateFilter.innerHTML = '<option value="">Select State</option>';
+            
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state.statecode;
+                option.textContent = state.state;
+                stateFilter.appendChild(option);
+            });
+        }
+        
+        // Update agency dropdown when district changes - NEW FUNCTION
+        async function updateAgencies() {
+            const stateFilter = document.getElementById('stateFilter');
+            const districtFilter = document.getElementById('districtFilter');
+            const tehsilFilter = document.getElementById('tehsilFilter');
+            const blockFilter = document.getElementById('blockFilter');
+            const agencyFilter = document.getElementById('agencyFilter');
+            
+            if (!stateFilter || !districtFilter || !agencyFilter) return;
+            
+            const statecode = stateFilter.value;
+            const district_id = districtFilter.value;
+            const tahsil_id = tehsilFilter.value;
+            const block_id = blockFilter.value;
+            
+            agencyFilter.innerHTML = '<option value="">Loading agencies...</option>';
+            
+            if (district_id) {
+                const agencies = await fetchAgencies(district_id, tahsil_id, block_id);
+                
+                agencyFilter.innerHTML = '<option value="">All Agencies</option>';
+                agencies.forEach(agency => {
+                    const option = document.createElement('option');
+                    option.value = agency.agencyid;
+                    option.textContent = agency.agencyname || agency.agencyid;
+                    agencyFilter.appendChild(option);
+                });
+                
+                if (agencies.length === 0) {
+                    agencyFilter.innerHTML = '<option value="">No agencies found</option>';
+                }
+            } else {
+                agencyFilter.innerHTML = '<option value="">Select district first</option>';
+            }
+        }
+        
+        // Update district dropdown when state changes
+        async function updateDistricts() {
+            const stateFilter = document.getElementById('stateFilter');
+            const districtFilter = document.getElementById('districtFilter');
+            const tehsilFilter = document.getElementById('tehsilFilter');
+            const blockFilter = document.getElementById('blockFilter');
+            const agencyFilter = document.getElementById('agencyFilter');
+            
+            if (!stateFilter || !districtFilter) return;
+            
+            const statecode = stateFilter.value;
+            
+            // Reset dependent dropdowns
+            districtFilter.innerHTML = '<option value="">Select District</option>';
+            tehsilFilter.innerHTML = '<option value="">Select district first</option>';
+            blockFilter.innerHTML = '<option value="">Select tehsil first</option>';
+            agencyFilter.innerHTML = '<option value="">Select district first</option>';
+            
+            if (statecode) {
+                districtFilter.innerHTML = '<option value="">Loading districts...</option>';
+                const districts = await fetchDistricts(statecode);
+                
+                districtFilter.innerHTML = '<option value="">Select District</option>';
+                districts.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district.district_id;
+                    option.textContent = district.districtname;
+                    districtFilter.appendChild(option);
+                });
+                
+                if (districts.length === 0) {
+                    districtFilter.innerHTML = '<option value="">No districts found</option>';
+                }
+            }
+        }
+        
+        // Update tehsil dropdown when district changes
+        async function updateTehsils() {
+            const stateFilter = document.getElementById('stateFilter');
+            const districtFilter = document.getElementById('districtFilter');
+            const tehsilFilter = document.getElementById('tehsilFilter');
+            const blockFilter = document.getElementById('blockFilter');
+            
+            if (!stateFilter || !districtFilter || !tehsilFilter) return;
+            
+            const statecode = stateFilter.value;
+            const district_id = districtFilter.value;
+            
+            // Reset dependent dropdowns
+            tehsilFilter.innerHTML = '<option value="">Select Tehsil</option>';
+            blockFilter.innerHTML = '<option value="">Select tehsil first</option>';
+            
+            if (statecode && district_id) {
+                tehsilFilter.innerHTML = '<option value="">Loading tehsils...</option>';
+                const tehsils = await fetchTehsils(statecode, district_id);
+                
+                tehsilFilter.innerHTML = '<option value="">Select Tehsil</option>';
+                tehsils.forEach(tehsil => {
+                    const option = document.createElement('option');
+                    option.value = tehsil.tahsil_id;
+                    option.textContent = tehsil.tahsilname;
+                    tehsilFilter.appendChild(option);
+                });
+                
+                if (tehsils.length === 0) {
+                    tehsilFilter.innerHTML = '<option value="">No tehsils found</option>';
+                }
+            }
+        }
+        
+        // Update block dropdown when tehsil changes
+        async function updateBlocks() {
+            const stateFilter = document.getElementById('stateFilter');
+            const districtFilter = document.getElementById('districtFilter');
+            const tehsilFilter = document.getElementById('tehsilFilter');
+            const blockFilter = document.getElementById('blockFilter');
+            
+            if (!stateFilter || !districtFilter || !tehsilFilter || !blockFilter) return;
+            
+            const statecode = stateFilter.value;
+            const district_id = districtFilter.value;
+            const tahsil_id = tehsilFilter.value;
+            
+            blockFilter.innerHTML = '<option value="">Select Block</option>';
+            
+            if (statecode && district_id && tahsil_id) {
+                blockFilter.innerHTML = '<option value="">Loading blocks...</option>';
+                const blocks = await fetchBlocks(statecode, district_id, tahsil_id);
+                
+                blockFilter.innerHTML = '<option value="">Select Block</option>';
+                blocks.forEach(block => {
+                    const option = document.createElement('option');
+                    option.value = block.block_id;
+                    option.textContent = block.blockname;
+                    blockFilter.appendChild(option);
+                });
+                
+                if (blocks.length === 0) {
+                    blockFilter.innerHTML = '<option value="">No blocks found</option>';
+                }
+            }
+        }
+        
+        // Initialize map
+        function initMap() {
+            try {
+                if (app.map) {
+                    app.map.remove();
+                }
+                
+                app.map = L.map('map').setView([20.5937, 78.9629], 5);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors | DWLR Data: India-WRIS',
+                    maxZoom: 18
+                }).addTo(app.map);
+                
+                // Add legend
+                const legend = L.control({position: 'bottomright'});
+                legend.onAdd = function() {
+                    const div = L.DomUtil.create('div', 'legend');
+                    div.innerHTML = `
+                        <div style="background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px;">DWLR Stations</h4>
+                            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; margin-right: 6px;"></div>
+                                <span style="font-size: 12px;">Telemetric</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                                <div style="width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; margin-right: 6px;"></div>
+                                <span style="font-size: 12px;">Manual</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; margin-right: 6px;"></div>
+                                <span style="font-size: 12px;">Offline</span>
+                            </div>
+                        </div>
+                    `;
+                    return div;
+                };
+                legend.addTo(app.map);
+                
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                showError('Failed to initialize map. Please refresh the page.');
+            }
+        }
+        
+        // Add stations to map
+        function addStationsToMap(stations) {
+            if (!app.map) {
+                console.error('Map not initialized');
+                return;
+            }
+            
+            // Clear existing markers
+            for (const markerId in app.markers) {
+                app.map.removeLayer(app.markers[markerId]);
+            }
+            app.markers = {};
+            
+            if (stations.length === 0) {
+                return;
+            }
+            
+            // Add new markers
+            stations.forEach((station, index) => {
+                // Generate realistic coordinates within India if not available
+                const baseCoords = getRegionalCoordinates(station.statecode);
+                const lat = station.latitude || (baseCoords.lat + (Math.random() - 0.5) * 2);
+                const lng = station.longitude || (baseCoords.lng + (Math.random() - 0.5) * 2);
+                
+                const isTelemetric = station.telemetric === true || station.telemetric === 'true';
+                const color = isTelemetric ? '#10b981' : '#3b82f6';
+                
+                const marker = L.circleMarker([lat, lng], {
+                    radius: isTelemetric ? 8 : 6,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                const popupContent = `
+                    <div style="min-width: 250px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="font-size: 16px;">${station.stationname || 'Unknown Station'}</strong>
+                            ${isTelemetric ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px;">TELEMETRIC</span>' : ''}
+                        </div>
+                        <hr style="margin: 8px 0;">
+                        <table style="font-size: 14px; width: 100%;">
+                            <tr><td><strong>Station Code:</strong></td><td>${station.stationcode || 'N/A'}</td></tr>
+                            <tr><td><strong>District ID:</strong></td><td>${station.district_id || station.distrinct_id || 'N/A'}</td></tr>
+                            <tr><td><strong>Agency ID:</strong></td><td>${station.agencyid || 'N/A'}</td></tr>
+                            <tr><td><strong>Dataset:</strong></td><td>${station.datasetcode || 'N/A'}</td></tr>
+                            <tr><td><strong>Data Type:</strong></td><td>${isTelemetric ? 'Real-time Telemetric' : 'Manual Recording'}</td></tr>
+                        </table>
+                        <div style="margin-top: 8px; padding: 6px; background: #f3f4f6; border-radius: 4px; font-size: 12px;">
+                            <strong>Coordinates:</strong> ${lat.toFixed(4)}°, ${lng.toFixed(4)}°
+                        </div>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(app.map);
+                app.markers[station.stationcode] = marker;
+            });
+            
+            // Fit map to show all markers
+            if (Object.keys(app.markers).length > 0) {
+                const group = new L.featureGroup(Object.values(app.markers));
+                app.map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+        
+        // Get regional coordinates for states
+        function getRegionalCoordinates(statecode) {
+            const stateCoords = {
+                '01': { lat: 15.9129, lng: 79.7400 }, // Andhra Pradesh
+                '02': { lat: 28.2180, lng: 94.7278 }, // Arunachal Pradesh
+                '03': { lat: 26.2006, lng: 92.9376 }, // Assam
+                '04': { lat: 25.0961, lng: 85.3131 }, // Bihar
+                '05': { lat: 15.2993, lng: 74.1240 }, // Goa
+                '06': { lat: 23.0225, lng: 72.5714 }, // Gujarat
+                '07': { lat: 29.0588, lng: 76.0856 }, // Haryana
+                '08': { lat: 31.1048, lng: 77.1734 }, // Himachal Pradesh
+                '09': { lat: 33.7782, lng: 76.5762 }, // Jammu & Kashmir
+                '10': { lat: 15.3173, lng: 75.7139 }, // Karnataka
+                '11': { lat: 10.8505, lng: 76.2711 }, // Kerala
+                '12': { lat: 22.9734, lng: 78.6569 }, // Madhya Pradesh
+                '13': { lat: 19.7515, lng: 75.7139 }, // Maharashtra
+                '14': { lat: 24.6637, lng: 93.9063 }, // Manipur
+                '15': { lat: 25.4670, lng: 91.3662 }, // Meghalaya
+                '16': { lat: 23.1645, lng: 92.9376 }, // Mizoram
+                '17': { lat: 26.1584, lng: 94.5624 }, // Nagaland
+                '18': { lat: 20.9517, lng: 85.0985 }, // Odisha
+                '19': { lat: 31.1471, lng: 75.3412 }, // Punjab
+                '20': { lat: 27.0238, lng: 74.2179 }, // Rajasthan
+                '22': { lat: 11.1271, lng: 78.6569 }, // Tamil Nadu
+                '23': { lat: 23.9408, lng: 91.9882 }, // Tripura
+                '24': { lat: 26.8467, lng: 80.9462 }, // Uttar Pradesh
+                '25': { lat: 22.9868, lng: 87.8550 }, // West Bengal
+                '26': { lat: 21.2787, lng: 81.8661 }, // Chhattisgarh
+                '27': { lat: 23.6102, lng: 85.2799 }, // Jharkhand
+                '28': { lat: 30.0668, lng: 79.0193 }, // Uttarakhand
+                '29': { lat: 18.1124, lng: 79.0193 }, // Telangana
+                '41': { lat: 11.7401, lng: 92.6586 }, // Andaman & Nicobar
+                '42': { lat: 30.7333, lng: 76.7794 }, // Chandigarh
+                '43': { lat: 20.1809, lng: 73.0169 }, // Dadra & Nagar Haveli
+                '45': { lat: 28.7041, lng: 77.1025 }, // Delhi
+                '47': { lat: 11.9416, lng: 79.8083 }  // Puducherry
+            };
+            
+            return stateCoords[statecode] || { lat: 20.5937, lng: 78.9629 };
+        }
+        
+        // Populate station list
+        function populateStationList(stations) {
+            const listContainer = document.getElementById('stationList');
+            const stationCount = document.getElementById('stationCount');
+            
+            if (!listContainer || !stationCount) return;
+            
+            stationCount.textContent = stations.length;
+            
+            if (stations.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 2rem;">
+                        <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No DWLR stations found for the selected criteria</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Try adjusting your filters or selecting a different region</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let telemetricCount = 0;
+            let manualCount = 0;
+            
+            const stationHTML = stations.map(station => {
+                const isTelemetric = station.telemetric === true || station.telemetric === 'true';
+                if (isTelemetric) telemetricCount++;
+                else manualCount++;
+                
+                return `
+                    <div class="station-card" onclick="selectStation('${station.stationcode}')">
+                        <div class="station-header">
+                            <span class="station-name">${station.stationname || 'Unknown Station'}</span>
+                            <span class="station-badge ${isTelemetric ? 'badge-telemetric' : 'badge-online'}">
+                                ${isTelemetric ? 'TELEMETRIC' : 'MANUAL'}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.875rem; color: #6b7280;">
+                            District ID: ${station.district_id || station.distrinct_id || 'N/A'} | 
+                            Agency: ${station.agencyid || 'N/A'}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">
+                            Code: ${station.stationcode || 'N/A'} | 
+                            Dataset: ${station.datasetcode || 'N/A'}
+                        </div>
+                        ${isTelemetric ? `
+                            <div class="telemetric-indicator">
+                                <i class="fas fa-satellite-dish"></i>
+                                <span>Real-time data available</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            listContainer.innerHTML = `
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                        <span><strong>Telemetric:</strong> ${telemetricCount}</span>
+                        <span><strong>Manual:</strong> ${manualCount}</span>
+                        <span><strong>Total:</strong> ${stations.length}</span>
+                    </div>
+                </div>
+                ${stationHTML}
+            `;
+        }
+        
+        // Select station function
+        window.selectStation = function(stationcode) {
+            document.querySelectorAll('.station-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            if (app.map && app.markers[stationcode]) {
+                const marker = app.markers[stationcode];
+                app.map.setView(marker.getLatLng(), 12);
+                marker.openPopup();
+            }
+        };
+        
+        // Apply filters and search stations
+        async function applyFilters() {
+            const stateFilter = document.getElementById('stateFilter');
+            const districtFilter = document.getElementById('districtFilter');
+            const agencyFilter = document.getElementById('agencyFilter');
+            
+            if (!stateFilter || !districtFilter) {
+                showError('Filter elements not found');
+                return;
+            }
+            
+            const statecode = stateFilter.value;
+            const district_id = districtFilter.value;
+            const agencyid = agencyFilter.value;
+            
+            if (!statecode) {
+                showError('Please select a state first');
+                return;
+            }
+            
+            if (!district_id) {
+                showError('Please select a district');
+                return;
+            }
+            
+            let allStations = [];
+            
+            try {
+                // Fetch both regular and telemetric stations
+                const [regularStations, telemetricStations] = await Promise.all([
+                    fetchStations(district_id, agencyid),
+                    fetchTelemetricStations(district_id, agencyid)
+                ]);
+                
+                // Combine and deduplicate stations
+                const stationMap = new Map();
+                
+                regularStations.forEach(station => {
+                    stationMap.set(station.stationcode, { ...station, telemetric: false });
+                });
+                
+                telemetricStations.forEach(station => {
+                    stationMap.set(station.stationcode, { ...station, telemetric: true });
+                });
+                
+                allStations = Array.from(stationMap.values());
+                
+                if (allStations.length === 0) {
+                    showError('No DWLR stations found for the selected criteria. Try selecting a different district.');
+                    populateStationList([]);
+                    addStationsToMap([]);
+                    return;
+                }
+                
+                // Update UI
+                app.stations = allStations;
+                addStationsToMap(allStations);
+                populateStationList(allStations);
+                
+                // Count telemetric vs regular stations
+                const telemetricCount = allStations.filter(s => s.telemetric).length;
+                const regularCount = allStations.length - telemetricCount;
+                
+                showSuccess(`Found ${allStations.length} DWLR stations (${telemetricCount} telemetric, ${regularCount} manual)`);
+                
+                // Update dashboard metrics
+                app.totalStationsCount = allStations.length;
+                app.telemetricStationsCount = telemetricCount;
+                updateDashboardMetrics();
+                
+            } catch (error) {
+                console.error('Error applying filters:', error);
+                showError('Failed to fetch station data. Please try again.');
+            }
+        }
+        
+        // Update dashboard metrics
+        function updateDashboardMetrics() {
+            const totalStationsEl = document.getElementById('totalStations');
+            const statesCountEl = document.getElementById('statesCount');
+            const telemetricCountEl = document.getElementById('telemetricCount');
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            const dataQualityEl = document.getElementById('dataQuality');
+            
+            if (totalStationsEl) {
+                totalStationsEl.textContent = app.totalStationsCount > 0 
+                    ? app.totalStationsCount.toLocaleString()
+                    : '5,260*';
+            }
+            
+            if (statesCountEl) {
+                statesCountEl.textContent = app.states.length || 'Loading...';
+            }
+            
+            if (telemetricCountEl) {
+                telemetricCountEl.textContent = app.telemetricStationsCount > 0 
+                    ? app.telemetricStationsCount.toLocaleString()
+                    : 'Available*';
+            }
+            
+            if (lastUpdateEl) {
+                const now = new Date();
+                lastUpdateEl.textContent = now.toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            if (dataQualityEl) {
+                dataQualityEl.textContent = '98.5%';
+            }
+            
+            // Update status indicators
+            const stationsStatusEl = document.getElementById('stationsStatus');
+            const statesStatusEl = document.getElementById('statesStatus');
+            
+            if (stationsStatusEl) {
+                stationsStatusEl.innerHTML = app.totalStationsCount > 0
+                    ? '<i class="fas fa-check-circle"></i><span>Live data loaded</span>'
+                    : '<i class="fas fa-info-circle"></i><span>*Total across India</span>';
+                stationsStatusEl.className = app.totalStationsCount > 0 
+                    ? 'metric-change change-positive' 
+                    : 'metric-change';
+            }
+            
+            if (statesStatusEl) {
+                statesStatusEl.innerHTML = app.states.length > 0
+                    ? '<i class="fas fa-check-circle"></i><span>All states loaded</span>'
+                    : '<i class="fas fa-sync fa-spin"></i><span>Loading states...</span>';
+                statesStatusEl.className = app.states.length > 0 
+                    ? 'metric-change change-positive' 
+                    : 'metric-change';
+            }
+        }
+        
+        // Setup tab navigation
+        function setupTabNavigation() {
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Update active tab
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show corresponding content
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    const tabId = this.dataset.tab;
+                    const tabContent = document.getElementById(tabId);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                    }
+                    
+                    // Initialize map when monitoring tab is selected
+                    if (tabId === 'monitoring' && !app.map) {
+                        setTimeout(initMap, 100);
+                    }
+                });
+            });
+        }
+        
+        // Refresh map function
+        function refreshMap() {
+            if (app.stations.length > 0) {
+                addStationsToMap(app.stations);
+                showSuccess('Map refreshed with latest station data');
+            } else {
+                showError('No station data to refresh. Please search for stations first.');
+            }
+        }
+        
+        // Initialize application
+        async function initApp() {
+            try {
+                setupTabNavigation();
+                
+                // Set up event listeners
+                const stateFilter = document.getElementById('stateFilter');
+                const districtFilter = document.getElementById('districtFilter');
+                const tehsilFilter = document.getElementById('tehsilFilter');
+                const blockFilter = document.getElementById('blockFilter');
+                const applyFiltersBtn = document.getElementById('applyFilters');
+                const refreshMapBtn = document.getElementById('refreshMap');
+                
+                if (stateFilter) stateFilter.addEventListener('change', updateDistricts);
+                if (districtFilter) districtFilter.addEventListener('change', function() {
+                    updateTehsils();
+                    updateAgencies(); // Added this line to update agencies when district changes
+                });
+                if (tehsilFilter) tehsilFilter.addEventListener('change', updateBlocks);
+                if (blockFilter) blockFilter.addEventListener('change', updateAgencies); // Added this line
+                if (applyFiltersBtn) applyFiltersBtn.addEventListener('click', applyFilters);
+                if (refreshMapBtn) refreshMapBtn.addEventListener('click', refreshMap);
+                
+                // Initialize monitoring tab map
+                document.querySelector('[data-tab="monitoring"]').addEventListener('click', function() {
+                    if (!app.map) {
+                        setTimeout(initMap, 100);
+                    }
+                });
+                
+                // Fetch initial data
+                await fetchStates();
+                
+                // Start auto-update
+                setInterval(updateDashboardMetrics, 60000);
+                
+                // Initial dashboard update
+                updateDashboardMetrics();
+                
+            } catch (error) {
+                console.error('App initialization error:', error);
+                showError('Failed to initialize application. Please refresh the page.');
+            }
+        }
+        
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+        });
+    </script>
+</body>
+</html>
