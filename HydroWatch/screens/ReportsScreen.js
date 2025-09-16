@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { FontAwesome5 as Icon } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useAppContext } from '../state/AppContext';
 
 const { width, height } = Dimensions.get('window');
@@ -73,6 +75,13 @@ const ReportsScreen = () => {
       dataQuality: Math.floor(88 + Math.random() * 10),
       avgWaterLevel: (18.2 + Math.random() * 6).toFixed(1),
       efficiency: Math.floor(92 + Math.random() * 6),
+      // Enhanced data for comprehensive reports
+      waterLevelTrends: generateWaterLevelTrends(),
+      stationPerformance: generateStationPerformance(),
+      alertsBreakdown: generateAlertsBreakdown(),
+      geographicDistribution: generateGeographicDistribution(),
+      temporalAnalysis: generateTemporalAnalysis(),
+      recommendations: generateRecommendations(),
     };
 
     const regionMultipliers = {
@@ -94,6 +103,120 @@ const ReportsScreen = () => {
     };
   };
 
+  const generateWaterLevelTrends = () => {
+    return {
+      monthly: Array.from({ length: 12 }, (_, i) => ({
+        month: new Date(2024, i).toLocaleString('default', { month: 'short' }),
+        avgLevel: (15 + Math.random() * 10).toFixed(2),
+        trend: Math.random() > 0.5 ? 'up' : 'down',
+        variance: (Math.random() * 3).toFixed(2)
+      })),
+      seasonal: {
+        monsoon: { avg: 22.5, change: '+12.3%' },
+        postMonsoon: { avg: 18.7, change: '+5.2%' },
+        winter: { avg: 14.2, change: '-8.1%' },
+        summer: { avg: 11.8, change: '-15.7%' }
+      }
+    };
+  };
+
+  const generateStationPerformance = () => {
+    return {
+      uptime: Array.from({ length: 10 }, (_, i) => ({
+        stationId: `DWLR_${String(i + 1).padStart(3, '0')}`,
+        uptime: (92 + Math.random() * 7).toFixed(1),
+        dataQuality: (85 + Math.random() * 12).toFixed(1),
+        lastMaintenance: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toLocaleDateString()
+      })),
+      issues: [
+        { type: 'Communication', count: 12, severity: 'medium' },
+        { type: 'Sensor Drift', count: 8, severity: 'low' },
+        { type: 'Power Supply', count: 5, severity: 'high' },
+        { type: 'Calibration', count: 15, severity: 'medium' }
+      ]
+    };
+  };
+
+  const generateAlertsBreakdown = () => {
+    return {
+      critical: {
+        count: 8,
+        stations: ['DWLR_001', 'DWLR_045', 'DWLR_112'],
+        reasons: ['Water level below critical threshold', 'Equipment malfunction', 'Data transmission failure']
+      },
+      warning: {
+        count: 15,
+        reasons: ['Declining trend detected', 'Seasonal anomaly', 'Maintenance due']
+      },
+      resolved: {
+        count: 23,
+        avgResolutionTime: '4.2 hours'
+      }
+    };
+  };
+
+  const generateGeographicDistribution = () => {
+    return {
+      byState: [
+        { state: 'Rajasthan', stations: 1245, alerts: 8, avgLevel: 18.5 },
+        { state: 'Maharashtra', stations: 987, alerts: 5, avgLevel: 14.2 },
+        { state: 'Gujarat', stations: 756, alerts: 4, avgLevel: 16.8 },
+        { state: 'Punjab', stations: 643, alerts: 2, avgLevel: 12.3 },
+        { state: 'Haryana', stations: 523, alerts: 3, avgLevel: 15.7 }
+      ],
+      coverage: {
+        urban: { count: 3456, percentage: 22.7 },
+        rural: { count: 8932, percentage: 58.6 },
+        agricultural: { count: 2846, percentage: 18.7 }
+      }
+    };
+  };
+
+  const generateTemporalAnalysis = () => {
+    return {
+      dailyPatterns: {
+        peak: '14:00-16:00',
+        low: '04:00-06:00',
+        avgVariation: '2.3m'
+      },
+      weeklyPatterns: {
+        weekdays: { avgLevel: 16.8, trend: 'stable' },
+        weekends: { avgLevel: 17.2, trend: 'slight increase' }
+      },
+      annualTrends: {
+        2024: { avg: 16.5, change: '-2.1%' },
+        2023: { avg: 16.9, change: '+1.8%' },
+        2022: { avg: 16.6, change: '-0.5%' }
+      }
+    };
+  };
+
+  const generateRecommendations = () => {
+    return [
+      {
+        priority: 'High',
+        category: 'Maintenance',
+        description: 'Schedule immediate inspection for 8 critical stations in Rajasthan region',
+        timeline: '1-2 days',
+        impact: 'Critical'
+      },
+      {
+        priority: 'Medium',
+        category: 'Optimization',
+        description: 'Implement predictive maintenance for stations with declining data quality',
+        timeline: '1-2 weeks',
+        impact: 'Moderate'
+      },
+      {
+        priority: 'Low',
+        category: 'Enhancement',
+        description: 'Upgrade communication systems for improved real-time data transmission',
+        timeline: '1-3 months',
+        impact: 'Long-term'
+      }
+    ];
+  };
+
   const generateChartData = () => {
     const data = [];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
@@ -112,20 +235,127 @@ const ReportsScreen = () => {
   const chartData = generateChartData();
   const maxChartValue = Math.max(...chartData.map(d => d.value));
 
+  const generateReportContent = () => {
+    const period = periods.find(p => p.key === selectedPeriod)?.label;
+    const region = regions.find(r => r.key === selectedRegion)?.label;
+    const data = reportData;
+    const timestamp = new Date().toISOString();
+
+    return {
+      pdf: `
+HYDROWATCH INDIA - COMPREHENSIVE WATER MONITORING REPORT
+===============================================================
+
+Report Period: ${period}
+Region: ${region}
+Generated: ${new Date().toLocaleString()}
+
+EXECUTIVE SUMMARY
+-----------------
+Total Stations: ${data.totalStations.toLocaleString()}
+Active Stations: ${data.activeStations.toLocaleString()} (${((data.activeStations/data.totalStations)*100).toFixed(1)}%)
+Critical Alerts: ${data.criticalAlerts}
+Data Quality Score: ${data.dataQuality}%
+Average Water Level: ${data.avgWaterLevel}m below ground level
+System Efficiency: ${data.efficiency}%
+
+WATER LEVEL TRENDS
+------------------
+${data.waterLevelTrends.monthly.map(m => `${m.month}: ${m.avgLevel}m (${m.trend === 'up' ? '↑' : '↓'})`).join('\n')}
+
+SEASONAL ANALYSIS
+-----------------
+Monsoon: ${data.waterLevelTrends.seasonal.monsoon.avg}m (${data.waterLevelTrends.seasonal.monsoon.change})
+Post-Monsoon: ${data.waterLevelTrends.seasonal.postMonsoon.avg}m (${data.waterLevelTrends.seasonal.postMonsoon.change})
+Winter: ${data.waterLevelTrends.seasonal.winter.avg}m (${data.waterLevelTrends.seasonal.winter.change})
+Summer: ${data.waterLevelTrends.seasonal.summer.avg}m (${data.waterLevelTrends.seasonal.summer.change})
+
+STATION PERFORMANCE
+-------------------
+${data.stationPerformance.uptime.map(s => `${s.stationId}: ${s.uptime}% uptime, ${s.dataQuality}% data quality`).join('\n')}
+
+CRITICAL ALERTS BREAKDOWN
+-------------------------
+Critical: ${data.alertsBreakdown.critical.count} stations
+Warning: ${data.alertsBreakdown.warning.count} stations
+Resolved: ${data.alertsBreakdown.resolved.count} alerts (avg resolution: ${data.alertsBreakdown.resolved.avgResolutionTime})
+
+GEOGRAPHIC DISTRIBUTION
+-----------------------
+${data.geographicDistribution.byState.map(s => `${s.state}: ${s.stations} stations, ${s.alerts} alerts, avg level: ${s.avgLevel}m`).join('\n')}
+
+RECOMMENDATIONS
+---------------
+${data.recommendations.map((r, i) => `${i+1}. [${r.priority}] ${r.category}: ${r.description} (${r.timeline})`).join('\n')}
+
+Generated by HydroWatch India DWLR Monitoring System
+© 2024 Central Ground Water Board, Government of India
+`,
+      csv: `Station ID,Uptime %,Data Quality %,Last Maintenance,Water Level (m),Status,Alerts\n${data.stationPerformance.uptime.map(s => `${s.stationId},${s.uptime},${s.dataQuality},${s.lastMaintenance},${(15 + Math.random() * 10).toFixed(2)},${Math.random() > 0.8 ? 'Critical' : 'Normal'},${Math.floor(Math.random() * 3)}`).join('\n')}\n\nMonthly Trends\nMonth,Avg Level (m),Trend,Variance\n${data.waterLevelTrends.monthly.map(m => `${m.month},${m.avgLevel},${m.trend},${m.variance}`).join('\n')}\n\nState Summary\nState,Stations,Alerts,Avg Level (m)\n${data.geographicDistribution.byState.map(s => `${s.state},${s.stations},${s.alerts},${s.avgLevel}`).join('\n')}`
+    };
+  };
+
+  const downloadReport = async (format = 'pdf') => {
+    try {
+      const reportContent = generateReportContent();
+      const period = periods.find(p => p.key === selectedPeriod)?.label;
+      const region = regions.find(r => r.key === selectedRegion)?.label;
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      const fileName = `HydroWatch_${period}_Report_${region.replace(/\s+/g, '_')}_${timestamp}.${format}`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      const content = format === 'csv' ? reportContent.csv : reportContent.pdf;
+      
+      await FileSystem.writeAsStringAsync(fileUri, content, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: format === 'csv' ? 'text/csv' : 'text/plain',
+          dialogTitle: `Share ${period} Report - ${region}`,
+        });
+        
+        Alert.alert(
+          'Success!',
+          `${period} report for ${region} has been generated and shared successfully!\n\nFile: ${fileName}`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        Alert.alert(
+          'Report Generated',
+          `Report saved to: ${fileUri}\n\nSorry, sharing is not available on this device.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      Alert.alert(
+        'Error',
+        `Failed to generate report: ${error.message}\n\nPlease try again or contact support.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
+  };
+
   const handleGenerateReport = () => {
     const period = periods.find(p => p.key === selectedPeriod)?.label;
     const region = regions.find(r => r.key === selectedRegion)?.label;
     
     Alert.alert(
       'Generate Report',
-      `Generate ${period} report for ${region}?\n\nReport will include:\n• Water level trends\n• Station performance metrics\n• Data quality analysis\n• Critical alerts summary\n• Comparative analysis`,
+      `Generate comprehensive ${period} report for ${region}?\n\n📊 Report will include:\n• Executive summary with key metrics\n• Water level trends and seasonal analysis\n• Station performance data (${reportData.stationPerformance.uptime.length} stations)\n• Critical alerts breakdown\n• Geographic distribution analysis\n• Actionable recommendations\n\n📁 Available formats: PDF text report and CSV data export`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Generate', 
-          onPress: () => {
-            Alert.alert('Success', 'Report generation initiated. You will receive the report via email within 10 minutes.');
-          }
+          text: 'Generate PDF', 
+          onPress: () => downloadReport('pdf')
+        },
+        { 
+          text: 'Generate CSV', 
+          onPress: () => downloadReport('csv')
         },
       ]
     );
@@ -498,11 +728,11 @@ const ReportsScreen = () => {
 
           <TouchableOpacity 
             style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => Alert.alert('Export', 'Data exported to CSV format')}
+            onPress={() => downloadReport('csv')}
           >
             <View style={styles.actionButtonSecondaryContent}>
               <Icon name="file-csv" size={20} color="#0EA5E9" />
-              <Text style={styles.actionButtonSecondaryText}>Export Data</Text>
+              <Text style={styles.actionButtonSecondaryText}>Export CSV Data</Text>
             </View>
           </TouchableOpacity>
         </View>
