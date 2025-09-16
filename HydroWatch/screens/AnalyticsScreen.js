@@ -32,7 +32,7 @@ import {
   PumpingImpactChart,
   LongTermTrendsChart,
   MetricChartCard
-} from '../components/ChartComponents';
+} from '../components/ChartComponents_Simple';
 
 const { width } = Dimensions.get('window');
 

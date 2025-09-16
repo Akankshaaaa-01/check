@@ -1,13 +1,12 @@
 // Beautiful Chart Components for HydroWatch Analytics
-// Modern, animated charts with stunning visual design
+// Simple, reliable charts with stunning visual design
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
-  Animated,
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
@@ -187,16 +186,12 @@ export const CorrelationChart = ({ data, title, subtitle }) => {
           {data.map((value, index) => {
             const height = (value / maxValue) * 120;
             return (
-              <View key={index} style={styles.correlationBarContainer}>
+              <View key={`correlation-${index}-${value}`} style={styles.correlationBarContainer}>
                 <Animated.View
                   style={[
                     styles.correlationBar,
                     {
-                      height: animatedValue.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, height],
-                        extrapolate: 'clamp',
-                      }),
+                    height: height * (animatedValue._value || 0),
                       backgroundColor: `hsl(${220 + (value/maxValue) * 60}, 70%, 60%)`,
                     },
                   ]}
@@ -260,7 +255,7 @@ export const SeasonalChart = ({ data, title, subtitle }) => {
               
               return (
                 <TouchableOpacity 
-                  key={index}
+                  key={`seasonal-${index}-${value}`}
                   style={styles.seasonalBarContainer}
                   onPress={() => setSelectedMonth(isSelected ? null : index)}
                 >
@@ -269,11 +264,7 @@ export const SeasonalChart = ({ data, title, subtitle }) => {
                       style={[
                         styles.seasonalBar,
                         {
-                          height: animatedValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, height],
-                            extrapolate: 'clamp',
-                          }),
+                          height: height,
                           backgroundColor: isSelected ? '#0EA5E9' : '#93C5FD',
                           transform: [{
                             scale: isSelected ? 1.05 : 1
@@ -344,17 +335,13 @@ export const PumpingImpactChart = ({ data, title, subtitle }) => {
         </View>
         
         <View style={styles.pumpingChart}>
-          {data.map((value, index) => (
-            <View key={index} style={styles.pumpingArea}>
+        {data.map((value, index) => (
+            <View key={`pumping-${index}-${value}`} style={styles.pumpingArea}>
               <Animated.View
                 style={[
                   styles.pumpingFill,
                   {
-                    height: animatedValue.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, (value / Math.max(...data)) * 100],
-                      extrapolate: 'clamp',
-                    }),
+                    height: (value / Math.max(...data)) * 100,
                     backgroundColor: `hsla(${45 - (value/Math.max(...data)) * 20}, 80%, 60%, 0.7)`,
                   },
                 ]}
@@ -426,7 +413,7 @@ export const LongTermTrendsChart = ({ data, title, subtitle }) => {
           <Animated.View style={styles.trendLine}>
             {pathPoints.map((point, index) => (
               <Animated.View
-                key={index}
+                key={`trend-point-${index}-${point.x}`}
                 style={[
                   styles.trendPoint,
                   {
@@ -449,7 +436,7 @@ export const LongTermTrendsChart = ({ data, title, subtitle }) => {
           {/* Year Labels */}
           <View style={styles.yearLabels}>
             {['2019', '2020', '2021', '2022', '2023', '2024'].map((year, index) => (
-              <Text key={year} style={styles.yearLabel}>{year}</Text>
+              <Text key={`year-${year}-${index}`} style={styles.yearLabel}>{year}</Text>
             ))}
           </View>
         </View>
@@ -542,14 +529,11 @@ export const MetricChartCard = ({
           <View style={styles.miniChart}>
             {[...Array(8)].map((_, i) => (
               <Animated.View
-                key={i}
+                key={`mini-bar-${i}-${Math.random()}`}
                 style={[
                   styles.miniBar,
                   {
-                    height: animatedValue.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, (Math.random() * 20) + 10],
-                    }),
+                    height: (Math.random() * 20) + 10,
                   },
                 ]}
               />
