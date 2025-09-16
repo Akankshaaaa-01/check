@@ -6,7 +6,8 @@ import { FontAwesome5 as Icon } from '@expo/vector-icons';
 import DashboardScreen from '../screens/DashboardScreen';
 import ImprovedMonitoringScreen from '../screens/ImprovedMonitoringScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
-import TelemetryScreen from '../screens/TelemetryScreen';
+import ChatbotScreen from '../screens/ChatbotScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import { COLORS } from '../utils/constants';
 
 const Tab = createBottomTabNavigator();
@@ -24,8 +25,10 @@ const AppNavigator = () => {
             iconName = 'map-marked-alt';
           } else if (route.name === 'Analytics') {
             iconName = 'chart-area';
-          } else if (route.name === 'Telemetry') {
-            iconName = 'satellite-dish';
+          } else if (route.name === 'Chatbot') {
+            iconName = 'robot';
+          } else if (route.name === 'Reports') {
+            iconName = 'file-alt';
           }
 
           return (
@@ -87,7 +90,8 @@ const AppNavigator = () => {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Monitoring" component={ImprovedMonitoringScreen} />
       <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-      <Tab.Screen name="Telemetry" component={TelemetryScreen} />
+      <Tab.Screen name="Chatbot" component={ChatbotScreen} />
+      <Tab.Screen name="Reports" component={ReportsScreen} />
     </Tab.Navigator>
   );
 };
