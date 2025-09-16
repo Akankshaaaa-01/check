@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,15 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
-  TextInput,
   RefreshControl,
   StatusBar,
   Animated,
   Easing,
-  SectionList
+  Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 as Icon } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,44 +37,67 @@ const COLORS = {
   cardGradient4: ['#f59e0b', '#fbbf24']
 };
 
-// Mock data and API functions for demo
-const mockStates = [
-  { statecode: '01', state: 'Andhra Pradesh' },
-  { statecode: '02', state: 'Arunachal Pradesh' },
-  { statecode: '03', state: 'Assam' },
-  { statecode: '04', state: 'Bihar' },
-  { statecode: '05', state: 'Chhattisgarh' },
-  { statecode: '06', state: 'Goa' },
-  { statecode: '07', state: 'Gujarat' },
-  { statecode: '08', state: 'Haryana' }
-];
-
-const mockDistricts = {
-  '04': [
-    { district_id: 110102, districtname: 'Patna' },
-    { district_id: 110103, districtname: 'Gaya' },
-    { district_id: 110104, districtname: 'Nalanda' }
-  ]
-};
-
-const mockStations = [
-  { stationcode: 'DWLR001', stationname: 'Patna Station 1', isDwlr: true, telemetric: true, districtname: 'Patna', statename: 'Bihar', agencyid: 'CGWB' },
-  { stationcode: 'DWLR002', stationname: 'Patna Station 2', isDwlr: true, telemetric: true, districtname: 'Patna', statename: 'Bihar', agencyid: 'CGWB' },
-  { stationcode: 'MAN001', stationname: 'Patna Manual 1', isDwlr: false, telemetric: false, districtname: 'Patna', statename: 'Bihar', agencyid: 'STATE' },
-  { stationcode: 'MAN002', stationname: 'Patna Manual 2', isDwlr: false, telemetric: false, districtname: 'Patna', statename: 'Bihar', agencyid: 'STATE' }
-];
-
 // Mock API functions
 const mockAPI = {
-  fetchStates: () => Promise.resolve({ data: mockStates, error: false }),
-  fetchDistricts: (statecode) => Promise.resolve({ data: mockDistricts[statecode] || [], error: false }),
-  fetchAllStations: ({ district_id }) => {
+  fetchAllStations: async ({ district_id }) => {
     // Simulate API delay
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ data: mockStations, error: false });
-      }, 1000);
-    });
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Generate mock stations based on district
+    const mockStations = [
+      { 
+        stationcode: 'DWLR001', 
+        stationname: 'Lucknow Central', 
+        isDwlr: true, 
+        districtname: 'Lucknow', 
+        statename: 'Uttar Pradesh', 
+        agencyid: 'CGWB',
+        latitude: 26.8467,
+        longitude: 80.9462,
+        groundwaterLevel: (8 + Math.random() * 10).toFixed(1),
+        trend: Math.random() > 0.5 ? 'up' : 'down'
+      },
+      { 
+        stationcode: 'DWLR002', 
+        stationname: 'Kanpur Riverside', 
+        isDwlr: true, 
+        districtname: 'Kanpur', 
+        statename: 'Uttar Pradesh', 
+        agencyid: 'CGWB',
+        latitude: 26.4499,
+        longitude: 80.3319,
+        groundwaterLevel: (8 + Math.random() * 10).toFixed(1),
+        trend: Math.random() > 0.5 ? 'up' : 'down'
+      },
+      { 
+        stationcode: 'MAN001', 
+        stationname: 'Varanasi Heritage', 
+        isDwlr: false, 
+        districtname: 'Varanasi', 
+        statename: 'Uttar Pradesh', 
+        agencyid: 'STATE',
+        latitude: 25.3176,
+        longitude: 82.9739,
+        groundwaterLevel: (8 + Math.random() * 10).toFixed(1),
+        trend: Math.random() > 0.5 ? 'up' : 'down'
+      }
+    ];
+    
+    return { data: mockStations, error: false };
+  },
+  
+  getGroundwaterLevelData: async (stationCode) => {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    return {
+      data: {
+        currentLevel: (8 + Math.random() * 10).toFixed(1),
+        trend: Math.random() > 0.5 ? 'up' : 'down',
+        lastUpdated: new Date().toISOString()
+      },
+      error: false
+    };
   }
 };
 
@@ -86,136 +109,52 @@ const ImprovedMonitoringScreen = () => {
   const [viewMode, setViewMode] = useState('list');
   const [refreshing, setRefreshing] = useState(false);
   const [serverConnected, setServerConnected] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
   
   // Filter state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [loadingFilters, setLoadingFilters] = useState(false);
   
-  // Filter options - FIXED: Proper state management
+  // Filter options
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   
-  // Selected filters - FIXED: Clear dependent filters when parent changes
+  // Selected filters
   const [selectedState, setSelectedState] = useState(null);
   const [selectedDistrict, setSelectedDistrict] = useState(null);
   
-  // Station data - FIXED: Separate loading and display states
-  const [allStations, setAllStations] = useState([]);
-  const [displayStations, setDisplayStations] = useState([]);
+  // Station data
+  const [stations, setStations] = useState([]);
   const [loadingStations, setLoadingStations] = useState(false);
   
-  // Search state - FIXED: Debounced search without screen jitter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const searchTimeoutRef = useRef(null);
-  
-  // Station type filter - NEW: Navigation between telemetry/manual
-  const [stationTypeFilter, setStationTypeFilter] = useState('all'); // 'all', 'telemetry', 'manual'
+  // Groundwater data
+  const [groundwaterData, setGroundwaterData] = useState({});
   
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // FIXED: Debounced search without triggering re-renders
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
-
-  // FIXED: Filter stations only when necessary, memoized for performance
-  const filteredStations = useMemo(() => {
-    let filtered = [...allStations];
-
-    // Apply search filter
-    if (debouncedSearchQuery.trim()) {
-      const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter(station => 
-        (station.stationname?.toLowerCase().includes(query)) ||
-        (station.stationcode?.toLowerCase().includes(query)) ||
-        (station.districtname?.toLowerCase().includes(query))
-      );
-    }
-
-    // Apply station type filter
-    switch (stationTypeFilter) {
-      case 'telemetry':
-        filtered = filtered.filter(station => station.isDwlr || station.telemetric);
-        break;
-      case 'manual':
-        filtered = filtered.filter(station => !station.isDwlr && !station.telemetric);
-        break;
-      default:
-        // Show all
-        break;
-    }
-
-    return filtered;
-  }, [allStations, debouncedSearchQuery, stationTypeFilter]);
-
-  // FIXED: Organize stations into sections for better navigation
-  const stationSections = useMemo(() => {
-    const telemetricStations = filteredStations.filter(station => station.isDwlr || station.telemetric);
-    const manualStations = filteredStations.filter(station => !station.isDwlr && !station.telemetric);
-    
-    const sections = [];
-    
-    if (stationTypeFilter === 'all' || stationTypeFilter === 'telemetry') {
-      if (telemetricStations.length > 0) {
-        sections.push({
-          title: 'Telemetric DWLR Stations',
-          data: telemetricStations,
-          type: 'telemetry',
-          count: telemetricStations.length
-        });
-      } else if (stationTypeFilter === 'telemetry') {
-        sections.push({
-          title: 'Telemetric DWLR Stations',
-          data: [],
-          type: 'telemetry',
-          count: 0,
-          isEmpty: true
-        });
-      }
-    }
-    
-    if (stationTypeFilter === 'all' || stationTypeFilter === 'manual') {
-      if (manualStations.length > 0) {
-        sections.push({
-          title: 'Manual Monitoring Stations',
-          data: manualStations,
-          type: 'manual',
-          count: manualStations.length
-        });
-      } else if (stationTypeFilter === 'manual') {
-        sections.push({
-          title: 'Manual Monitoring Stations',
-          data: [],
-          type: 'manual',
-          count: 0,
-          isEmpty: true
-        });
-      }
-    }
-    
-    return sections;
-  }, [filteredStations, stationTypeFilter]);
-
   // Load initial data
   useEffect(() => {
     loadFilterOptions();
     startAnimations();
+    getUserLocation();
   }, []);
+
+  const getUserLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setUserLocation(location.coords);
+    } catch (error) {
+      console.log('Error getting location:', error);
+    }
+  };
 
   const startAnimations = () => {
     // Pulse animation
@@ -244,14 +183,22 @@ const ImprovedMonitoringScreen = () => {
     }).start();
   };
 
-  // FIXED: Improved filter loading
+  // Load filter options
   const loadFilterOptions = async () => {
     setLoadingFilters(true);
     try {
-      const statesResponse = await mockAPI.fetchStates();
-      if (!statesResponse.error) {
-        setStates(statesResponse.data);
-      }
+      // Mock states data
+      const mockStates = [
+        { statecode: 'UP', state: 'Uttar Pradesh' },
+        { statecode: 'MH', state: 'Maharashtra' },
+        { statecode: 'BR', state: 'Bihar' },
+        { statecode: 'WB', state: 'West Bengal' },
+        { statecode: 'MP', state: 'Madhya Pradesh' },
+        { statecode: 'TN', state: 'Tamil Nadu' },
+        { statecode: 'RJ', state: 'Rajasthan' },
+        { statecode: 'KA', state: 'Karnataka' }
+      ];
+      setStates(mockStates);
     } catch (error) {
       Alert.alert('Error', 'Failed to load filter options');
     } finally {
@@ -259,34 +206,36 @@ const ImprovedMonitoringScreen = () => {
     }
   };
 
-  // FIXED: Clear dependent filters when state changes
+  // Load districts when state changes
   const handleStateChange = async (state) => {
     setSelectedState(state);
-    setSelectedDistrict(null); // Clear district
-    setDistricts([]); // Clear districts list
-    setAllStations([]); // Clear previous stations
-    setDisplayStations([]);
+    setSelectedDistrict(null);
     
     if (state) {
       try {
-        const districtsResponse = await mockAPI.fetchDistricts(state.statecode);
-        if (!districtsResponse.error) {
-          setDistricts(districtsResponse.data);
-        }
+        // Mock districts data
+        const mockDistricts = {
+          'UP': [
+            { district_id: 1, districtname: 'Lucknow' },
+            { district_id: 2, districtname: 'Kanpur' },
+            { district_id: 3, districtname: 'Varanasi' }
+          ],
+          'MH': [
+            { district_id: 4, districtname: 'Mumbai' },
+            { district_id: 5, districtname: 'Pune' },
+            { district_id: 6, districtname: 'Nagpur' }
+          ]
+        };
+        setDistricts(mockDistricts[state.statecode] || []);
       } catch (error) {
         Alert.alert('Error', 'Failed to load districts');
       }
+    } else {
+      setDistricts([]);
     }
   };
 
-  // FIXED: Clear stations when district changes
-  const handleDistrictChange = (district) => {
-    setSelectedDistrict(district);
-    setAllStations([]); // Clear previous stations
-    setDisplayStations([]);
-  };
-
-  // FIXED: Better station search with loading states
+  // Search stations
   const searchStations = async () => {
     if (!selectedDistrict) {
       Alert.alert('District Required', 'Please select a district to search for stations.');
@@ -295,53 +244,162 @@ const ImprovedMonitoringScreen = () => {
 
     setLoadingStations(true);
     try {
+      // Fetch stations from mock API
       const response = await mockAPI.fetchAllStations({
         district_id: selectedDistrict.district_id
       });
 
       if (!response.error && response.data) {
-        setAllStations(response.data);
-        setDisplayStations(response.data);
+        setStations(response.data);
         Alert.alert('Success', `Found ${response.data.length} stations in ${selectedDistrict.districtname}`);
       } else {
-        setAllStations([]);
-        setDisplayStations([]);
+        setStations([]);
         Alert.alert('No Results', 'No stations found for the selected area.');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to search stations. Please try again.');
-      setAllStations([]);
-      setDisplayStations([]);
+      setStations([]);
     } finally {
       setLoadingStations(false);
     }
   };
 
-  // FIXED: Proper filter clearing
+  // Handle station selection
+  const handleStationPress = async (station) => {
+    setSelectedStation(station);
+    setLoadingStationData(true);
+    setModalVisible(true);
+
+    try {
+      // Try to fetch groundwater data from mock API
+      const groundwaterResponse = await mockAPI.getGroundwaterLevelData(station.stationcode);
+      
+      if (!groundwaterResponse.error && groundwaterResponse.data) {
+        setGroundwaterData(prev => ({
+          ...prev,
+          [station.stationcode]: groundwaterResponse.data
+        }));
+      } else {
+        // Use station data if API fails
+        setGroundwaterData(prev => ({
+          ...prev,
+          [station.stationcode]: {
+            currentLevel: station.groundwaterLevel,
+            trend: station.trend,
+            lastUpdated: new Date().toISOString()
+          }
+        }));
+      }
+    } catch (error) {
+      // Fallback to station data
+      setGroundwaterData(prev => ({
+        ...prev,
+        [station.stationcode]: {
+          currentLevel: station.groundwaterLevel,
+          trend: station.trend,
+          lastUpdated: new Date().toISOString()
+        }
+      }));
+    } finally {
+      setLoadingStationData(false);
+    }
+  };
+
+  // Clear all filters
   const clearAllFilters = () => {
     setSelectedState(null);
     setSelectedDistrict(null);
     setDistricts([]);
-    setSearchQuery('');
-    setDebouncedSearchQuery('');
-    setStationTypeFilter('all');
-    setAllStations([]);
-    setDisplayStations([]);
+    setStations([]);
   };
+
+  // Group stations by type
+  const { telemetricStations, manualStations } = {
+    telemetricStations: stations.filter(station => station.isDwlr || station.telemetric),
+    manualStations: stations.filter(station => !station.isDwlr && !station.telemetric)
+  };
+
+  // Simple Map View Component (without react-native-maps)
+  const SimpleMapView = () => (
+    <View style={styles.simpleMapContainer}>
+      <View style={styles.mapPlaceholder}>
+        <Icon name="map" size={50} color={COLORS.muted} />
+        <Text style={styles.mapPlaceholderText}>Map View</Text>
+        <Text style={styles.mapPlaceholderSubtext}>
+          {stations.length} stations in {selectedDistrict?.districtname}
+        </Text>
+        
+        {/* Display stations as markers on the placeholder map */}
+        <View style={styles.stationMarkersContainer}>
+          {stations.map((station, index) => (
+            <TouchableOpacity
+              key={station.stationcode}
+              style={[
+                styles.stationMarker,
+                { 
+                  left: `${20 + (index * 15) % 70}%`,
+                  top: `${30 + (index * 10) % 50}%`,
+                  backgroundColor: station.isDwlr ? COLORS.accent : COLORS.secondary
+                }
+              ]}
+              onPress={() => handleStationPress(station)}
+            >
+              <Icon 
+                name={station.isDwlr ? 'satellite-dish' : 'clipboard-list'} 
+                size={12} 
+                color="#fff" 
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      
+      {/* Station list below the map */}
+      <ScrollView style={styles.mapStationList}>
+        {stations.map(station => (
+          <TouchableOpacity
+            key={station.stationcode}
+            style={styles.mapStationItem}
+            onPress={() => handleStationPress(station)}
+          >
+            <View style={[
+              styles.stationTypeIndicator,
+              { backgroundColor: station.isDwlr ? COLORS.accent : COLORS.secondary }
+            ]} />
+            <View style={styles.mapStationInfo}>
+              <Text style={styles.mapStationName}>{station.stationname}</Text>
+              <Text style={styles.mapStationLocation}>{station.districtname}</Text>
+            </View>
+            <View style={styles.gwLevelBadge}>
+              <Text style={styles.gwLevelText}>
+                {groundwaterData[station.stationcode]?.currentLevel || station.groundwaterLevel}m
+              </Text>
+              <Icon 
+                name={groundwaterData[station.stationcode]?.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
+                size={10} 
+                color={groundwaterData[station.stationcode]?.trend === 'up' ? '#4ade80' : '#f87171'} 
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   // Station card component
   const StationCard = React.memo(({ station }) => {
     const statusColor = station.isDwlr || station.telemetric ? COLORS.accent : COLORS.secondary;
     const stationType = station.isDwlr || station.telemetric ? 'DWLR' : 'Manual';
     const iconName = station.isDwlr || station.telemetric ? 'satellite-dish' : 'clipboard-list';
+    const groundwaterInfo = groundwaterData[station.stationcode] || {
+      currentLevel: station.groundwaterLevel,
+      trend: station.trend
+    };
     
     return (
       <TouchableOpacity
         style={styles.stationCard}
-        onPress={() => {
-          setSelectedStation(station);
-          setModalVisible(true);
-        }}
+        onPress={() => handleStationPress(station)}
         activeOpacity={0.8}
       >
         <LinearGradient
@@ -369,8 +427,15 @@ const ImprovedMonitoringScreen = () => {
             </View>
             
             <View style={styles.infoRow}>
-              <Icon name="building" size={12} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.infoText}>{station.agencyid}</Text>
+              <Icon name="tint" size={12} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.infoText}>
+                GW: {groundwaterInfo.currentLevel}m 
+                <Icon 
+                  name={groundwaterInfo.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
+                  size={10} 
+                  color={groundwaterInfo.trend === 'up' ? '#4ade80' : '#f87171'} 
+                />
+              </Text>
             </View>
           </View>
           
@@ -387,17 +452,17 @@ const ImprovedMonitoringScreen = () => {
     );
   });
 
-  // FIXED: Improved dropdown component without screen jitter
+  // Improved dropdown component
   const FilterDropdown = React.memo(({ title, data, selectedItem, onSelect, placeholder, loading = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     
     const getSelectedText = () => {
       if (!selectedItem) return placeholder;
-      return selectedItem.state || selectedItem.districtname || selectedItem.tehsilname || selectedItem.blockname || selectedItem.agencyname || placeholder;
+      return selectedItem.state || selectedItem.districtname || placeholder;
     };
     
     return (
-      <View style={styles.filterSection}>
+      <View style={[styles.filterSection, { zIndex: isOpen ? 1000 : 1 }]}>
         <Text style={styles.filterLabel}>{title}</Text>
         {loading ? (
           <View style={styles.loadingDropdown}>
@@ -468,55 +533,6 @@ const ImprovedMonitoringScreen = () => {
     );
   });
 
-  // NEW: Station type navigation bar
-  const StationTypeNavBar = () => (
-    <View style={styles.typeNavBar}>
-      <TouchableOpacity
-        style={[styles.typeNavItem, stationTypeFilter === 'all' && styles.typeNavItemActive]}
-        onPress={() => setStationTypeFilter('all')}
-      >
-        <Icon name="list" size={16} color={stationTypeFilter === 'all' ? '#fff' : COLORS.primary} />
-        <Text style={[styles.typeNavText, stationTypeFilter === 'all' && styles.typeNavTextActive]}>
-          All Stations
-        </Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity
-        style={[styles.typeNavItem, stationTypeFilter === 'telemetry' && styles.typeNavItemActive]}
-        onPress={() => setStationTypeFilter('telemetry')}
-      >
-        <Icon name="satellite-dish" size={16} color={stationTypeFilter === 'telemetry' ? '#fff' : COLORS.accent} />
-        <Text style={[styles.typeNavText, stationTypeFilter === 'telemetry' && styles.typeNavTextActive]}>
-          Telemetric
-        </Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity
-        style={[styles.typeNavItem, stationTypeFilter === 'manual' && styles.typeNavItemActive]}
-        onPress={() => setStationTypeFilter('manual')}
-      >
-        <Icon name="clipboard-list" size={16} color={stationTypeFilter === 'manual' ? '#fff' : COLORS.secondary} />
-        <Text style={[styles.typeNavText, stationTypeFilter === 'manual' && styles.typeNavTextActive]}>
-          Manual
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Empty state for telemetry stations
-  const EmptyTelemetryMessage = () => (
-    <View style={styles.emptySection}>
-      <Icon name="satellite-dish" size={40} color={COLORS.muted} />
-      <Text style={styles.emptyTitle}>No Telemetric DWLR Stations</Text>
-      <Text style={styles.emptySubtext}>
-        Real-time telemetric stations are not available in this area.
-      </Text>
-      <Text style={styles.emptyAction}>
-        Request your local government to install DWLR systems for better groundwater monitoring.
-      </Text>
-    </View>
-  );
-
   // Filter Modal
   const FilterModal = () => (
     <Modal
@@ -538,23 +554,6 @@ const ImprovedMonitoringScreen = () => {
           </LinearGradient>
           
           <ScrollView style={styles.filterModalBody} keyboardShouldPersistTaps="handled">
-            {/* Search Input - FIXED: No screen jitter */}
-            <View style={styles.searchSection}>
-              <Text style={styles.filterLabel}>Search Stations</Text>
-              <View style={styles.searchContainer}>
-                <Icon name="search" size={16} color={COLORS.muted} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Type station name or code..."
-                  placeholderTextColor={COLORS.muted}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  returnKeyType="search"
-                />
-              </View>
-            </View>
-            
-            {/* Location Filters */}
             <FilterDropdown
               title="State"
               data={states}
@@ -569,7 +568,7 @@ const ImprovedMonitoringScreen = () => {
                 title="District"
                 data={districts}
                 selectedItem={selectedDistrict}
-                onSelect={handleDistrictChange}
+                onSelect={setSelectedDistrict}
                 placeholder="Select District"
               />
             )}
@@ -597,82 +596,102 @@ const ImprovedMonitoringScreen = () => {
   );
 
   // Station Detail Modal
-  const StationDetailModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={() => setModalVisible(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.detailModalContent}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.secondary]}
-            style={styles.modalHeader}
-          >
-            <Text style={styles.modalTitle}>
-              {selectedStation?.stationname || selectedStation?.stationcode}
-            </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="times" size={20} color="#fff" />
-            </TouchableOpacity>
-          </LinearGradient>
+  const StationDetailModal = () => {
+    const groundwaterInfo = selectedStation ? groundwaterData[selectedStation.stationcode] : null;
+    
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.detailModalContent}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.secondary]}
+              style={styles.modalHeader}
+            >
+              <Text style={styles.modalTitle}>
+                {selectedStation?.stationname || selectedStation?.stationcode}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Icon name="times" size={20} color="#fff" />
+              </TouchableOpacity>
+            </LinearGradient>
 
-          <ScrollView style={styles.modalBody}>
-            <View style={styles.detailGrid}>
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Station Code</Text>
-                <Text style={styles.detailValue}>{selectedStation?.stationcode}</Text>
+            {loadingStationData ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading station data...</Text>
               </View>
-              
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Type</Text>
-                <Text style={styles.detailValue}>
-                  {selectedStation?.isDwlr || selectedStation?.telemetric ? 'Telemetric DWLR' : 'Manual'}
-                </Text>
+            ) : selectedStation ? (
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.detailGrid}>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>Station Code</Text>
+                    <Text style={styles.detailValue}>{selectedStation.stationcode}</Text>
+                  </View>
+                  
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>Type</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedStation.isDwlr || selectedStation.telemetric ? 'Telemetric DWLR' : 'Manual'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>District</Text>
+                    <Text style={styles.detailValue}>{selectedStation.districtname}</Text>
+                  </View>
+                  
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>State</Text>
+                    <Text style={styles.detailValue}>{selectedStation.statename}</Text>
+                  </View>
+                  
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>Agency</Text>
+                    <Text style={styles.detailValue}>{selectedStation.agencyid}</Text>
+                  </View>
+                </View>
+
+                {/* Groundwater Level Section */}
+                {groundwaterInfo && (
+                  <View style={styles.groundwaterSection}>
+                    <Text style={styles.sectionTitle}>Groundwater Level</Text>
+                    <View style={styles.groundwaterCard}>
+                      <View style={styles.groundwaterRow}>
+                        <Icon name="tint" size={20} color={COLORS.primary} />
+                        <Text style={styles.groundwaterLabel}>Current Level:</Text>
+                        <Text style={styles.groundwaterValue}>
+                          {groundwaterInfo.currentLevel} m
+                        </Text>
+                        <Icon 
+                          name={groundwaterInfo.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
+                          size={16} 
+                          color={groundwaterInfo.trend === 'up' ? COLORS.accent : COLORS.danger} 
+                          style={styles.trendIcon}
+                        />
+                      </View>
+                      {groundwaterInfo.lastUpdated && (
+                        <Text style={styles.groundwaterTime}>
+                          Last updated: {new Date(groundwaterInfo.lastUpdated).toLocaleString()}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            ) : (
+              <View style={styles.modalLoading}>
+                <Text style={styles.errorText}>No data available for this station</Text>
               </View>
-              
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>District</Text>
-                <Text style={styles.detailValue}>{selectedStation?.districtname}</Text>
-              </View>
-              
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>State</Text>
-                <Text style={styles.detailValue}>{selectedStation?.statename}</Text>
-              </View>
-              
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Agency</Text>
-                <Text style={styles.detailValue}>{selectedStation?.agencyid}</Text>
-              </View>
-            </View>
-          </ScrollView>
+            )}
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
-
-  // Render section header
-  const renderSectionHeader = ({ section }) => (
-    <View style={[
-      styles.sectionHeader,
-      { backgroundColor: section.type === 'telemetry' ? COLORS.accent : COLORS.secondary }
-    ]}>
-      <Text style={styles.sectionHeaderText}>{section.title}</Text>
-      <Text style={styles.sectionCountText}>{section.count} stations</Text>
-    </View>
-  );
-
-  // Render station item
-  const renderStationItem = ({ item }) => <StationCard station={item} />;
-
-  // Render empty section
-  const renderEmptySection = ({ section }) => {
-    if (section.type === 'telemetry' && section.isEmpty) {
-      return <EmptyTelemetryMessage />;
-    }
-    return null;
+      </Modal>
+    );
   };
 
   return (
@@ -689,38 +708,49 @@ const ImprovedMonitoringScreen = () => {
             <View>
               <Text style={styles.headerTitle}>DWLR Monitoring</Text>
               <Text style={styles.headerSubtitle}>
-                {filteredStations.length} stations loaded
+                {stations.length} stations loaded
               </Text>
             </View>
           </Animated.View>
           
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setFilterModalVisible(true)}
-          >
-            <Icon name="filter" size={16} color="#fff" />
-            <Text style={styles.filterButtonText}>Filters</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.viewToggleButton}
+              onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+            >
+              <Icon 
+                name={viewMode === 'list' ? 'map' : 'list'} 
+                size={16} 
+                color="#fff" 
+              />
+              <Text style={styles.viewToggleText}>
+                {viewMode === 'list' ? 'Map View' : 'List View'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setFilterModalVisible(true)}
+            >
+              <Icon name="filter" size={16} color="#fff" />
+              <Text style={styles.filterButtonText}>Filters</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
       {/* Content */}
       <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
-        {allStations.length > 0 && <StationTypeNavBar />}
-        
-        {loadingStations ? (
+        {viewMode === 'map' ? (
+          <SimpleMapView />
+        ) : loadingStations ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingText}>Loading stations...</Text>
           </View>
-        ) : allStations.length > 0 ? (
-          <SectionList
-            sections={stationSections}
-            keyExtractor={(item) => item.stationcode}
-            renderItem={renderStationItem}
-            renderSectionHeader={renderSectionHeader}
-            renderSectionFooter={renderEmptySection}
-            contentContainerStyle={styles.sectionListContent}
+        ) : stations.length > 0 ? (
+          <ScrollView 
+            style={styles.scrollView}
             refreshControl={
               <RefreshControl 
                 refreshing={refreshing} 
@@ -731,7 +761,37 @@ const ImprovedMonitoringScreen = () => {
                 colors={[COLORS.primary]}
               />
             }
-          />
+          >
+            {/* Telemetric Stations Section */}
+            {telemetricStations.length > 0 && (
+              <View>
+                <View style={[styles.sectionHeader, { backgroundColor: COLORS.accent }]}>
+                  <Text style={styles.sectionHeaderText}>Telemetric DWLR Stations</Text>
+                  <Text style={styles.sectionCountText}>{telemetricStations.length} stations</Text>
+                </View>
+                <View style={styles.stationsGrid}>
+                  {telemetricStations.map((station) => (
+                    <StationCard key={station.stationcode} station={station} />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Manual Stations Section */}
+            {manualStations.length > 0 && (
+              <View>
+                <View style={[styles.sectionHeader, { backgroundColor: COLORS.secondary }]}>
+                  <Text style={styles.sectionHeaderText}>Manual Monitoring Stations</Text>
+                  <Text style={styles.sectionCountText}>{manualStations.length} stations</Text>
+                </View>
+                <View style={styles.stationsGrid}>
+                  {manualStations.map((station) => (
+                    <StationCard key={station.stationcode} station={station} />
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
         ) : (
           <View style={styles.emptyContainer}>
             <Icon name="search-location" size={60} color={COLORS.muted} />
@@ -794,6 +854,25 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  viewToggleText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -802,7 +881,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
   },
-   filterButtonText: {
+  filterButtonText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
@@ -812,39 +891,102 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.light,
   },
-  // Station Type Navigation
-  typeNavBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    margin: 16,
+  // Simple Map View
+  simpleMapContainer: {
+    flex: 1,
+  },
+  mapPlaceholder: {
+    height: 250,
+    backgroundColor: '#e2e8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 12,
-    padding: 4,
-    elevation: 2,
+    margin: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  mapPlaceholderText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.dark,
+    marginTop: 8,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+  stationMarkersContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  stationMarker: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
-  typeNavItem: {
+  mapStationList: {
     flex: 1,
+  },
+  mapStationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  typeNavItemActive: {
-    backgroundColor: COLORS.primary,
+  stationTypeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
   },
-  typeNavText: {
-    fontSize: 12,
+  mapStationInfo: {
+    flex: 1,
+  },
+  mapStationName: {
+    fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
+    color: COLORS.dark,
+    marginBottom: 4,
+  },
+  mapStationLocation: {
+    fontSize: 12,
     color: COLORS.muted,
   },
-  typeNavTextActive: {
-    color: '#fff',
+  gwLevelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  gwLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.dark,
+    marginRight: 4,
   },
   // Loading states
   loadingContainer: {
@@ -859,18 +1001,16 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontWeight: '500',
   },
-  // Section List
-  sectionListContent: {
-    padding: 16,
-    paddingBottom: 100,
+  // Scroll View
+  scrollView: {
+    flex: 1,
   },
+  // Section Headers
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    padding: 16,
     marginTop: 16,
   },
   sectionHeaderText: {
@@ -883,10 +1023,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  // Stations Grid
+  stationsGrid: {
+    padding: 16,
+  },
   // Station Card
   stationCard: {
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -900,7 +1044,7 @@ const styles = StyleSheet.create({
   stationHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   statusIndicator: {
     width: 12,
@@ -971,27 +1115,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 20,
   },
-  emptySection: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    margin: 16,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.dark,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyAction: {
-    fontSize: 12,
-    color: COLORS.muted,
-    textAlign: 'center',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
   searchCTAButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1033,24 +1156,6 @@ const styles = StyleSheet.create({
   },
   filterModalBody: {
     padding: 20,
-  },
-  searchSection: {
-    marginBottom: 20,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: COLORS.dark,
-    marginLeft: 12,
   },
   filterSection: {
     marginBottom: 20,
@@ -1173,6 +1278,10 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: 20,
   },
+  modalLoading: {
+    padding: 40,
+    alignItems: 'center',
+  },
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1197,6 +1306,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.dark,
+  },
+  // Groundwater section
+  groundwaterSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.dark,
+    marginBottom: 12,
+  },
+  groundwaterCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  groundwaterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  groundwaterLabel: {
+    fontSize: 14,
+    color: COLORS.dark,
+    marginLeft: 8,
+    marginRight: 8,
+    fontWeight: '600',
+  },
+  groundwaterValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  trendIcon: {
+    marginLeft: 8,
+  },
+  groundwaterTime: {
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.muted,
+    textAlign: 'center',
   },
 });
 

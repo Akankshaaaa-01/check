@@ -96,9 +96,25 @@ export const fetchDistricts = async (stateCode) => {
       datasetcode: "GWATERLVL",
     });
     console.log('✅ Districts fetched successfully');
-    return { data: response.data, error: false };
+    return { data: response.data?.data || response.data || [], error: false };
   } catch (error) {
     return handleApiError(error, 'Fetch Districts');
+  }
+};
+
+// Fetch tehsils for a district
+export const fetchTehsils = async (statecode, districtId) => {
+  try {
+    console.log(`🏘️ Fetching tehsils for district: ${districtId}`);
+    const response = await apiClient.post("/tehsil/getMasterTehsilList", {
+      statecode: statecode,
+      district_id: districtId,
+      datasetcode: "GWATERLVL"
+    });
+    console.log('✅ Tehsils fetched successfully');
+    return { data: response.data?.data || response.data || [], error: false };
+  } catch (error) {
+    return handleApiError(error, 'Fetch Tehsils');
   }
 };
 
@@ -127,14 +143,17 @@ export const fetchTelemetricStations = (district_id, agencyid = "") => {
   }).catch(error => handleApiError(error, 'Fetch Telemetric Stations'));
 };
 
-export const fetchBlocks = async (districtCode) => {
+export const fetchBlocks = async (statecode, districtId, tehsilId) => {
   try {
-    console.log(`🏘️ Fetching blocks for district: ${districtCode}`);
+    console.log(`🏠️ Fetching blocks for tehsil: ${tehsilId}`);
     const response = await apiClient.post('/block/getMasterBlockList', {
-      districtcode: districtCode
+      statecode: statecode,
+      district_id: districtId,
+      tahsil_id: tehsilId,
+      datasetcode: "GWATERLVL"
     });
     console.log('✅ Blocks fetched successfully');
-    return { data: response.data, error: false };
+    return { data: response.data?.data || response.data || [], error: false };
   } catch (error) {
     return handleApiError(error, 'Fetch Blocks');
   }

@@ -11,19 +11,19 @@
 
 const API_CONFIG = {
   // Backend Server Configuration
-  SERVER_IP: '10.109.1.168', // Replace with your server IP (e.g., '192.168.1.100')
-  SERVER_PORT: '3001',
+  YOUR_SERVER_IP: '10.182.66.33', // Updated with actual local Wi-Fi IP
+  SERVER_PORT: '3001', // Backend server runs on port 3001
   
   // Development URLs (most common)
   DEVELOPMENT: {
-    BASE_URL: `http://YOUR_SERVER_IP:3001/api/indiawris`,
-    ENHANCED_URL: `http://YOUR_SERVER_IP:3001/api`
+    BASE_URL: `http://10.182.66.33:3001/api/indiawris`,
+    ENHANCED_URL: `http://10.182.66.33:3001/api`
   },
   
   // Production URLs (if deploying)
   PRODUCTION: {
-    BASE_URL: 'https://your-domain.com/api/indiawris',
-    ENHANCED_URL: 'https://your-domain.com/api'
+    BASE_URL: 'https://10.182.66.33/indiawris',
+    ENHANCED_URL: 'https://10.182.66.33.com/api'
   }
 };
 

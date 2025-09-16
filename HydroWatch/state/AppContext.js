@@ -9,6 +9,12 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [apiStatus, setApiStatus] = useState({ connected: false, message: 'Connecting...' });
 
+  // Helper function to update stations
+  const updateStations = (newStations) => {
+    console.log('🔄 Updating stations in context:', newStations?.length || 0);
+    setStations(newStations || []);
+  };
+
   const value = {
     states,
     setStates,
@@ -16,6 +22,7 @@ export const AppProvider = ({ children }) => {
     setDistricts,
     stations,
     setStations,
+    updateStations,
     loading,
     setLoading,
     apiStatus,
@@ -26,5 +33,9 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useAppContext = () => {
-  return useContext(AppContext);
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useAppContext must be used within an AppProvider');
+  }
+  return context;
 };

@@ -416,7 +416,7 @@ cron.schedule('0 */6 * * *', () => {
 });
 
 // Start server
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0',async () => {
   console.log(`HydroWatch India Enhanced Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
   console.log(`Water level API: http://localhost:${PORT}/api/station/water-level`);
@@ -424,4 +424,33 @@ app.listen(PORT, async () => {
   console.log(`DWLR data updates every 6 hours - Server will cache and serve real-time data`);
   
   await initializeCache();
+});
+
+// CGWB Proxy endpoint
+app.get('/api/cgwb/*splat', async (req, res) => {
+  const cgwbEndpoint = req.params.splat ? '/' + req.params.splat : '';
+  const targetUrl = `https://gwdata.cgwb.gov.in${cgwbEndpoint}`;
+  
+  console.log(`Proxying to CGWB: ${targetUrl}`);
+  
+  try {
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'HydroWatchIndia/1.0.0'
+      },
+      timeout: 30000
+    });
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error('CGWB Proxy error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch data from CGWB',
+      message: error.message 
+    });
+  }
 });
