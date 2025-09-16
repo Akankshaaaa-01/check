@@ -15,9 +15,8 @@ import {
   Easing,
   Image
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 as Icon } from '@expo/vector-icons';
-import * as Location from 'expo-location';
+import CustomGradient from '../components/CustomGradient';
+import CustomIcon from '../components/CustomIcon';
 
 const { width, height } = Dimensions.get('window');
 
@@ -109,7 +108,7 @@ const ImprovedMonitoringScreen = () => {
   const [viewMode, setViewMode] = useState('list');
   const [refreshing, setRefreshing] = useState(false);
   const [serverConnected, setServerConnected] = useState(true);
-  const [userLocation, setUserLocation] = useState(null);
+  // Removed userLocation state - no longer using expo-location
   
   // Filter state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -138,23 +137,9 @@ const ImprovedMonitoringScreen = () => {
   useEffect(() => {
     loadFilterOptions();
     startAnimations();
-    getUserLocation();
   }, []);
 
-  const getUserLocation = async () => {
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Permission to access location was denied');
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location.coords);
-    } catch (error) {
-      console.log('Error getting location:', error);
-    }
-  };
+  // Removed getUserLocation function - no longer using expo-location
 
   const startAnimations = () => {
     // Pulse animation
@@ -323,7 +308,7 @@ const ImprovedMonitoringScreen = () => {
   const SimpleMapView = () => (
     <View style={styles.simpleMapContainer}>
       <View style={styles.mapPlaceholder}>
-        <Icon name="map" size={50} color={COLORS.muted} />
+        <CustomIcon name="map" size={50} color={COLORS.muted} />
         <Text style={styles.mapPlaceholderText}>Map View</Text>
         <Text style={styles.mapPlaceholderSubtext}>
           {stations.length} stations in {selectedDistrict?.districtname}
@@ -344,7 +329,7 @@ const ImprovedMonitoringScreen = () => {
               ]}
               onPress={() => handleStationPress(station)}
             >
-              <Icon 
+              <CustomIcon 
                 name={station.isDwlr ? 'satellite-dish' : 'clipboard-list'} 
                 size={12} 
                 color="#fff" 
@@ -374,7 +359,7 @@ const ImprovedMonitoringScreen = () => {
               <Text style={styles.gwLevelText}>
                 {groundwaterData[station.stationcode]?.currentLevel || station.groundwaterLevel}m
               </Text>
-              <Icon 
+              <CustomIcon 
                 name={groundwaterData[station.stationcode]?.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
                 size={10} 
                 color={groundwaterData[station.stationcode]?.trend === 'up' ? '#4ade80' : '#f87171'} 
@@ -402,10 +387,8 @@ const ImprovedMonitoringScreen = () => {
         onPress={() => handleStationPress(station)}
         activeOpacity={0.8}
       >
-        <LinearGradient
+        <CustomGradient
           colors={station.isDwlr || station.telemetric ? COLORS.cardGradient3 : COLORS.cardGradient2}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
           style={styles.stationCardGradient}
         >
           <View style={styles.stationHeader}>
@@ -417,20 +400,20 @@ const ImprovedMonitoringScreen = () => {
           
           <View style={styles.stationInfo}>
             <View style={styles.infoRow}>
-              <Icon name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>{station.districtname}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Icon name={iconName} size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name={iconName} size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>{stationType}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Icon name="tint" size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name="tint" size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>
                 GW: {groundwaterInfo.currentLevel}m 
-                <Icon 
+                <CustomIcon 
                   name={groundwaterInfo.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
                   size={10} 
                   color={groundwaterInfo.trend === 'up' ? '#4ade80' : '#f87171'} 
@@ -447,7 +430,7 @@ const ImprovedMonitoringScreen = () => {
               </Text>
             </View>
           </View>
-        </LinearGradient>
+        </CustomGradient>
       </TouchableOpacity>
     );
   });
@@ -479,7 +462,7 @@ const ImprovedMonitoringScreen = () => {
               <Text style={styles.dropdownButtonText} numberOfLines={1}>
                 {getSelectedText()}
               </Text>
-              <Icon 
+              <CustomIcon 
                 name={isOpen ? "chevron-up" : "chevron-down"} 
                 size={16} 
                 color={COLORS.muted} 
@@ -543,15 +526,15 @@ const ImprovedMonitoringScreen = () => {
     >
       <View style={styles.modalContainer}>
         <View style={styles.filterModalContent}>
-          <LinearGradient
+          <CustomGradient
             colors={[COLORS.primary, COLORS.secondary]}
             style={styles.filterModalHeader}
           >
             <Text style={styles.filterModalTitle}>Filter Stations</Text>
             <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-              <Icon name="times" size={24} color="#fff" />
+              <CustomIcon name="times" size={24} color="#fff" />
             </TouchableOpacity>
-          </LinearGradient>
+          </CustomGradient>
           
           <ScrollView style={styles.filterModalBody} keyboardShouldPersistTaps="handled">
             <FilterDropdown
@@ -586,7 +569,7 @@ const ImprovedMonitoringScreen = () => {
                 searchStations();
               }}
             >
-              <Icon name="search" size={16} color="#fff" />
+              <CustomIcon name="search" size={16} color="#fff" />
               <Text style={styles.searchButtonText}>Search Stations</Text>
             </TouchableOpacity>
           </View>
@@ -608,17 +591,17 @@ const ImprovedMonitoringScreen = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.detailModalContent}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.secondary]}
-              style={styles.modalHeader}
-            >
+          <CustomGradient
+            colors={[COLORS.primary, COLORS.secondary]}
+            style={styles.modalHeader}
+          >
               <Text style={styles.modalTitle}>
                 {selectedStation?.stationname || selectedStation?.stationcode}
               </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Icon name="times" size={20} color="#fff" />
-              </TouchableOpacity>
-            </LinearGradient>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <CustomIcon name="times" size={20} color="#fff" />
+            </TouchableOpacity>
+          </CustomGradient>
 
             {loadingStationData ? (
               <View style={styles.modalLoading}>
@@ -662,17 +645,17 @@ const ImprovedMonitoringScreen = () => {
                     <Text style={styles.sectionTitle}>Groundwater Level</Text>
                     <View style={styles.groundwaterCard}>
                       <View style={styles.groundwaterRow}>
-                        <Icon name="tint" size={20} color={COLORS.primary} />
+                      <CustomIcon name="tint" size={20} color={COLORS.primary} />
                         <Text style={styles.groundwaterLabel}>Current Level:</Text>
                         <Text style={styles.groundwaterValue}>
                           {groundwaterInfo.currentLevel} m
                         </Text>
-                        <Icon 
-                          name={groundwaterInfo.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
-                          size={16} 
-                          color={groundwaterInfo.trend === 'up' ? COLORS.accent : COLORS.danger} 
-                          style={styles.trendIcon}
-                        />
+                      <CustomIcon 
+                        name={groundwaterInfo.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
+                        size={16} 
+                        color={groundwaterInfo.trend === 'up' ? COLORS.accent : COLORS.danger} 
+                        style={styles.trendIcon}
+                      />
                       </View>
                       {groundwaterInfo.lastUpdated && (
                         <Text style={styles.groundwaterTime}>
@@ -699,11 +682,11 @@ const ImprovedMonitoringScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       
       {/* Header */}
-      <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.header}>
+      <CustomGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.header}>
         <View style={styles.headerContent}>
           <Animated.View style={[styles.logoSection, { transform: [{ scale: pulseAnim }] }]}>
             <View style={styles.logoCircle}>
-              <Icon name="satellite-dish" size={20} color="#fff" />
+              <CustomIcon name="satellite-dish" size={20} color="#fff" />
             </View>
             <View>
               <Text style={styles.headerTitle}>DWLR Monitoring</Text>
@@ -718,7 +701,7 @@ const ImprovedMonitoringScreen = () => {
               style={styles.viewToggleButton}
               onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
             >
-              <Icon 
+              <CustomIcon 
                 name={viewMode === 'list' ? 'map' : 'list'} 
                 size={16} 
                 color="#fff" 
@@ -732,12 +715,12 @@ const ImprovedMonitoringScreen = () => {
               style={styles.filterButton}
               onPress={() => setFilterModalVisible(true)}
             >
-              <Icon name="filter" size={16} color="#fff" />
+              <CustomIcon name="filter" size={16} color="#fff" />
               <Text style={styles.filterButtonText}>Filters</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
+      </CustomGradient>
 
       {/* Content */}
       <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
@@ -794,7 +777,7 @@ const ImprovedMonitoringScreen = () => {
           </ScrollView>
         ) : (
           <View style={styles.emptyContainer}>
-            <Icon name="search-location" size={60} color={COLORS.muted} />
+            <CustomIcon name="search-location" size={60} color={COLORS.muted} />
             <Text style={styles.emptyText}>No Stations Loaded</Text>
             <Text style={styles.emptySubtext}>
               Select a state and district, then search for groundwater monitoring stations
@@ -803,7 +786,7 @@ const ImprovedMonitoringScreen = () => {
               style={styles.searchCTAButton}
               onPress={() => setFilterModalVisible(true)}
             >
-              <Icon name="filter" size={16} color="#fff" />
+              <CustomIcon name="filter" size={16} color="#fff" />
               <Text style={styles.searchCTAText}>Open Filters</Text>
             </TouchableOpacity>
           </View>

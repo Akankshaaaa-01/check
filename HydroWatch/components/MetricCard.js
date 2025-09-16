@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { FontAwesome5 as Icon } from '@expo/vector-icons';
+import CustomIcon from './CustomIcon';
 import { COLORS } from '../utils/constants';
 
 const MetricCard = ({ icon, label, value }) => (
   <View style={styles.card}>
     <View style={styles.iconContainer}>
-      <Icon name={icon} size={20} color={COLORS.primary} />
+      <CustomIcon name={icon} size={20} color={COLORS.primary} />
     </View>
     <Text style={styles.label}>{label}</Text>
     <Text style={styles.value}>{value}</Text>

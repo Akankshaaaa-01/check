@@ -16,8 +16,8 @@ import {
   Easing,
   SectionList
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome5 as Icon } from '@expo/vector-icons';
+import CustomGradient from '../components/CustomGradient';
+import CustomIcon from '../components/CustomIcon';
 
 const { width, height } = Dimensions.get('window');
 
@@ -344,10 +344,8 @@ const ImprovedMonitoringScreen = () => {
         }}
         activeOpacity={0.8}
       >
-        <LinearGradient
+        <CustomGradient
           colors={station.isDwlr || station.telemetric ? COLORS.cardGradient3 : COLORS.cardGradient2}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
           style={styles.stationCardGradient}
         >
           <View style={styles.stationHeader}>
@@ -359,17 +357,17 @@ const ImprovedMonitoringScreen = () => {
           
           <View style={styles.stationInfo}>
             <View style={styles.infoRow}>
-              <Icon name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>{station.districtname}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Icon name={iconName} size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name={iconName} size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>{stationType}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Icon name="building" size={12} color="rgba(255,255,255,0.8)" />
+              <CustomIcon name="building" size={12} color="rgba(255,255,255,0.8)" />
               <Text style={styles.infoText}>{station.agencyid}</Text>
             </View>
           </View>
@@ -382,7 +380,7 @@ const ImprovedMonitoringScreen = () => {
               </Text>
             </View>
           </View>
-        </LinearGradient>
+        </CustomGradient>
       </TouchableOpacity>
     );
   });
@@ -414,7 +412,7 @@ const ImprovedMonitoringScreen = () => {
               <Text style={styles.dropdownButtonText} numberOfLines={1}>
                 {getSelectedText()}
               </Text>
-              <Icon 
+              <CustomIcon 
                 name={isOpen ? "chevron-up" : "chevron-down"} 
                 size={16} 
                 color={COLORS.muted} 
@@ -475,7 +473,7 @@ const ImprovedMonitoringScreen = () => {
         style={[styles.typeNavItem, stationTypeFilter === 'all' && styles.typeNavItemActive]}
         onPress={() => setStationTypeFilter('all')}
       >
-        <Icon name="list" size={16} color={stationTypeFilter === 'all' ? '#fff' : COLORS.primary} />
+        <CustomIcon name="list" size={16} color={stationTypeFilter === 'all' ? '#fff' : COLORS.primary} />
         <Text style={[styles.typeNavText, stationTypeFilter === 'all' && styles.typeNavTextActive]}>
           All Stations
         </Text>
@@ -485,7 +483,7 @@ const ImprovedMonitoringScreen = () => {
         style={[styles.typeNavItem, stationTypeFilter === 'telemetry' && styles.typeNavItemActive]}
         onPress={() => setStationTypeFilter('telemetry')}
       >
-        <Icon name="satellite-dish" size={16} color={stationTypeFilter === 'telemetry' ? '#fff' : COLORS.accent} />
+        <CustomIcon name="satellite-dish" size={16} color={stationTypeFilter === 'telemetry' ? '#fff' : COLORS.accent} />
         <Text style={[styles.typeNavText, stationTypeFilter === 'telemetry' && styles.typeNavTextActive]}>
           Telemetric
         </Text>
@@ -495,7 +493,7 @@ const ImprovedMonitoringScreen = () => {
         style={[styles.typeNavItem, stationTypeFilter === 'manual' && styles.typeNavItemActive]}
         onPress={() => setStationTypeFilter('manual')}
       >
-        <Icon name="clipboard-list" size={16} color={stationTypeFilter === 'manual' ? '#fff' : COLORS.secondary} />
+        <CustomIcon name="clipboard-list" size={16} color={stationTypeFilter === 'manual' ? '#fff' : COLORS.secondary} />
         <Text style={[styles.typeNavText, stationTypeFilter === 'manual' && styles.typeNavTextActive]}>
           Manual
         </Text>
@@ -506,7 +504,7 @@ const ImprovedMonitoringScreen = () => {
   // Empty state for telemetry stations
   const EmptyTelemetryMessage = () => (
     <View style={styles.emptySection}>
-      <Icon name="satellite-dish" size={40} color={COLORS.muted} />
+      <CustomIcon name="satellite-dish" size={40} color={COLORS.muted} />
       <Text style={styles.emptyTitle}>No Telemetric DWLR Stations</Text>
       <Text style={styles.emptySubtext}>
         Real-time telemetric stations are not available in this area.
@@ -527,22 +525,22 @@ const ImprovedMonitoringScreen = () => {
     >
       <View style={styles.modalContainer}>
         <View style={styles.filterModalContent}>
-          <LinearGradient
+          <CustomGradient
             colors={[COLORS.primary, COLORS.secondary]}
             style={styles.filterModalHeader}
           >
             <Text style={styles.filterModalTitle}>Filter Stations</Text>
             <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-              <Icon name="times" size={24} color="#fff" />
+              <CustomIcon name="times" size={24} color="#fff" />
             </TouchableOpacity>
-          </LinearGradient>
+          </CustomGradient>
           
           <ScrollView style={styles.filterModalBody} keyboardShouldPersistTaps="handled">
             {/* Search Input - FIXED: No screen jitter */}
             <View style={styles.searchSection}>
               <Text style={styles.filterLabel}>Search Stations</Text>
               <View style={styles.searchContainer}>
-                <Icon name="search" size={16} color={COLORS.muted} />
+                <CustomIcon name="search" size={16} color={COLORS.muted} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Type station name or code..."
@@ -587,7 +585,7 @@ const ImprovedMonitoringScreen = () => {
                 searchStations();
               }}
             >
-              <Icon name="search" size={16} color="#fff" />
+              <CustomIcon name="search" size={16} color="#fff" />
               <Text style={styles.searchButtonText}>Search Stations</Text>
             </TouchableOpacity>
           </View>
@@ -606,7 +604,7 @@ const ImprovedMonitoringScreen = () => {
     >
       <View style={styles.modalContainer}>
         <View style={styles.detailModalContent}>
-          <LinearGradient
+          <CustomGradient
             colors={[COLORS.primary, COLORS.secondary]}
             style={styles.modalHeader}
           >
@@ -614,9 +612,9 @@ const ImprovedMonitoringScreen = () => {
               {selectedStation?.stationname || selectedStation?.stationcode}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="times" size={20} color="#fff" />
+              <CustomIcon name="times" size={20} color="#fff" />
             </TouchableOpacity>
-          </LinearGradient>
+          </CustomGradient>
 
           <ScrollView style={styles.modalBody}>
             <View style={styles.detailGrid}>
@@ -680,11 +678,11 @@ const ImprovedMonitoringScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       
       {/* Header */}
-      <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.header}>
+      <CustomGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.header}>
         <View style={styles.headerContent}>
           <Animated.View style={[styles.logoSection, { transform: [{ scale: pulseAnim }] }]}>
             <View style={styles.logoCircle}>
-              <Icon name="satellite-dish" size={20} color="#fff" />
+              <CustomIcon name="satellite-dish" size={20} color="#fff" />
             </View>
             <View>
               <Text style={styles.headerTitle}>DWLR Monitoring</Text>
@@ -698,11 +696,11 @@ const ImprovedMonitoringScreen = () => {
             style={styles.filterButton}
             onPress={() => setFilterModalVisible(true)}
           >
-            <Icon name="filter" size={16} color="#fff" />
+            <CustomIcon name="filter" size={16} color="#fff" />
             <Text style={styles.filterButtonText}>Filters</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </CustomGradient>
 
       {/* Content */}
       <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
@@ -734,7 +732,7 @@ const ImprovedMonitoringScreen = () => {
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <Icon name="search-location" size={60} color={COLORS.muted} />
+            <CustomIcon name="search-location" size={60} color={COLORS.muted} />
             <Text style={styles.emptyText}>No Stations Loaded</Text>
             <Text style={styles.emptySubtext}>
               Select a state and district, then search for groundwater monitoring stations
@@ -743,7 +741,7 @@ const ImprovedMonitoringScreen = () => {
               style={styles.searchCTAButton}
               onPress={() => setFilterModalVisible(true)}
             >
-              <Icon name="filter" size={16} color="#fff" />
+              <CustomIcon name="filter" size={16} color="#fff" />
               <Text style={styles.searchCTAText}>Open Filters</Text>
             </TouchableOpacity>
           </View>
